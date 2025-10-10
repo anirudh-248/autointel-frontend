@@ -27,7 +27,9 @@ export default function VerifyOtpPage() {
     try {
       const res = await verifyOtp({ otp, session_id: sessionId });
       setOk(typeof res === "string" ? res : "Verified");
-      setTimeout(() => { window.location.href = "/"; }, 800);
+      setTimeout(() => {
+        window.location.href = "/";
+      }, 800);
     } catch (e: any) {
       setError(e?.message || "Verification failed");
     } finally {
@@ -50,7 +52,9 @@ export default function VerifyOtpPage() {
     <div className="container mx-auto px-4 py-20 max-w-md">
       <Card className="p-6 space-y-4">
         <h1 className="text-2xl font-semibold">Verify OTP</h1>
-        <p className="text-sm text-muted-foreground">Enter the code sent to your email/phone to complete verification.</p>
+        <p className="text-sm text-muted-foreground">
+          Enter the code sent to your email/phone to complete verification.
+        </p>
         {error && <div className="text-destructive text-sm">{error}</div>}
         {ok && <div className="text-green-600 text-sm">{ok}</div>}
         <div className="space-y-2">
@@ -78,7 +82,9 @@ export default function VerifyOtpPage() {
           </Button>
         </div>
         <div className="text-sm text-muted-foreground text-center">
-          <a className="underline" href="/login">Back to login</a>
+          <a className="underline" href="/login">
+            Back to login
+          </a>
         </div>
       </Card>
     </div>
