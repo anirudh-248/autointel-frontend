@@ -35,7 +35,12 @@ export const DataSourceInput: React.FC<DataSourceInputProps> = ({
 }) => {
   const props = { onDataLoaded, onError };
   const sqlprops = { onUriLoaded: onUriLoaded, onError };
-
+  const mongoprops = {
+    onDataLoaded,
+    onError,
+    connStr: userInfo?.mongodb_db_url,
+  };
+  const isMongoSource = ["mongodb"].includes(source);
   const isSQLSource = ["postgresql", "mysql", "sqlite"].includes(source);
 
   const existingConnection =
@@ -54,7 +59,15 @@ export const DataSourceInput: React.FC<DataSourceInputProps> = ({
         })()
       : null;
 
+  const existingMongoURI =
+    source === "mongodb" && userInfo ? userInfo.mongodb_db_url : null;
+
+  // Don't show connection UI if existing connection is found
   if (isSQLSource && existingConnection) {
+    return null;
+  }
+
+  if (source === "mongodb" && existingMongoURI) {
     return null;
   }
 
@@ -77,7 +90,7 @@ export const DataSourceInput: React.FC<DataSourceInputProps> = ({
     case "sqlite":
       return <SQLiteHandler {...sqlprops} dbType="sqlite" />;
     case "mongodb":
-      return <DatabaseHandler {...props} dbType={source} />;
+      return <DatabaseHandler {...mongoprops} dbType={source} />;
     case "reddit":
       return <RedditHandler {...props} />;
     case "adsense":
