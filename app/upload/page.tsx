@@ -129,7 +129,7 @@ export default function UploadPage() {
 
     // Handle MongoDB source - auto-connect if URI exists
     if (isMongoSource && userInfo?.mongodb_db_url && !dataset) {
-      loadExistingMongoConnection(userInfo.mongodb_db_url);
+      loadExistingMongoConnection(userInfo?.mongodb_db_url);
     }
   }, [source, userInfo, dataset]);
 

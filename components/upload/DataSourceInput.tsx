@@ -38,7 +38,7 @@ export const DataSourceInput: React.FC<DataSourceInputProps> = ({
   const mongoprops = {
     onDataLoaded,
     onError,
-    connStr: userInfo.mongodb_db_url,
+    connStr: userInfo?.mongodb_db_url,
   };
   const isMongoSource = ["mongodb"].includes(source);
   const isSQLSource = ["postgresql", "mysql", "sqlite"].includes(source);
