@@ -5,7 +5,6 @@ import { createMongoPrompt } from "@/lib/mongoLangChain";
 import { getLing1TLLM } from "@/app/api/llm";
 import mongoToDataset from "@/lib/mongoToDataset";
 
-
 const MongoOperationSchema = z.enum([
   "find",
   "aggregate",
@@ -64,21 +63,24 @@ enum ErrorCode {
 }
 
 const CONNECTION_TIMEOUT = 10_000;
-const QUERY_TIMEOUT = 30_000; 
+const QUERY_TIMEOUT = 30_000;
 const MAX_RESULT_SIZE = 10_000;
 const DANGEROUS_OPERATIONS = ["updateMany", "deleteMany"];
-const CACHE_TTL = 5 * 60 * 1000; 
+const CACHE_TTL = 5 * 60 * 1000;
 
 const queryCache = new Map<string, { result: any; timestamp: number }>();
 const rateLimitMap = new Map<string, { count: number; resetTime: number }>();
 
 const RATE_LIMIT = {
   MAX_REQUESTS: 10,
-  WINDOW_MS: 60_000, 
+  WINDOW_MS: 60_000,
 };
 
 function getRateLimitKey(req: Request): string {
-  const ip = req.headers.get("x-forwarded-for") || req.headers.get("x-real-ip") || "unknown";
+  const ip =
+    req.headers.get("x-forwarded-for") ||
+    req.headers.get("x-real-ip") ||
+    "unknown";
   return `rate_limit:${ip}`;
 }
 
@@ -101,9 +103,9 @@ function checkRateLimit(key: string): boolean {
 
 function sanitizeInput(input: string): string {
   return input
-    .replace(/[<>]/g, "") 
-    .replace(/\${.*?}/g, "") 
-    .replace(/`/g, "'") 
+    .replace(/[<>]/g, "")
+    .replace(/\${.*?}/g, "")
+    .replace(/`/g, "'")
     .trim();
 }
 
@@ -180,20 +182,23 @@ function parseGeneratedQuery(queryStr: string): MongoQuery {
   return mongoQuery;
 }
 async function inferSchema(db: Db, collectionName: string, sampleSize = 5) {
-  const sample = await db.collection(collectionName).find({}).limit(sampleSize).toArray();
+  const sample = await db
+    .collection(collectionName)
+    .find({})
+    .limit(sampleSize)
+    .toArray();
   const schema: Record<string, string> = {};
 
   if (!sample || sample.length === 0) return {};
 
   for (const doc of sample) {
-    Object.keys(doc).forEach(key => {
+    Object.keys(doc).forEach((key) => {
       schema[key] = typeof doc[key];
     });
   }
 
   return schema;
 }
-
 
 async function executeMongoOperation(
   db: Db,
@@ -232,7 +237,10 @@ async function executeMongoOperation(
           .find(query.filter || {}, safeOptions)
           .limit(MAX_RESULT_SIZE);
         result = await cursor.toArray();
-        console.log("[MongoDB Result Preview]", JSON.stringify(result.slice(0, 3), null, 2));
+        console.log(
+          "[MongoDB Result Preview]",
+          JSON.stringify(result.slice(0, 3), null, 2)
+        );
         affectedDocuments = result.length;
         break;
       }
@@ -332,7 +340,9 @@ async function executeMongoOperation(
 
   const executionTimeMs = Date.now() - startTime;
 
-  const normalized = Array.isArray(result) ? normalizeMongoDocs(result) : result;
+  const normalized = Array.isArray(result)
+    ? normalizeMongoDocs(result)
+    : result;
 
   return {
     result: normalized,
@@ -346,7 +356,7 @@ async function executeMongoOperation(
 }
 
 function normalizeMongoDocs(docs: any[]) {
-  return docs.map(doc => {
+  return docs.map((doc) => {
     const newDoc = { ...doc };
 
     if (newDoc._id && typeof newDoc._id === "object" && newDoc._id.toString) {
@@ -356,12 +366,12 @@ function normalizeMongoDocs(docs: any[]) {
     for (const key in newDoc) {
       if (
         typeof newDoc[key] === "string" &&
-        (newDoc[key].trim().startsWith("{") || newDoc[key].trim().startsWith("["))
+        (newDoc[key].trim().startsWith("{") ||
+          newDoc[key].trim().startsWith("["))
       ) {
         try {
           newDoc[key] = JSON.parse(newDoc[key]);
-        } catch {
-        }
+        } catch {}
       }
     }
 
@@ -389,14 +399,18 @@ async function connectWithRetry(
     } catch (err) {
       lastError = err as Error;
       if (attempt < maxRetries) {
-        await new Promise((resolve) => setTimeout(resolve, 1000 * (attempt + 1)));
+        await new Promise((resolve) =>
+          setTimeout(resolve, 1000 * (attempt + 1))
+        );
       }
     }
   }
 
   throw {
     code: ErrorCode.CONNECTION_ERROR,
-    message: `Failed to connect after ${maxRetries + 1} attempts: ${lastError?.message}`,
+    message: `Failed to connect after ${maxRetries + 1} attempts: ${
+      lastError?.message
+    }`,
     statusCode: 503,
   };
 }
@@ -425,7 +439,8 @@ export async function POST(req: Request): Promise<NextResponse<ApiResponse>> {
       return NextResponse.json(
         {
           success: false,
-          error: validationResult.error.issues[0]?.message || "Validation error",
+          error:
+            validationResult.error.issues[0]?.message || "Validation error",
           errorCode: ErrorCode.VALIDATION_ERROR,
         },
         { status: 400 }
@@ -454,7 +469,9 @@ export async function POST(req: Request): Promise<NextResponse<ApiResponse>> {
     const cachedResult = getFromCache(cacheKey);
 
     if (cachedResult && !dryRun) {
-      console.log(`[MongoDB API] Cache hit for: "${sanitizedRequest.slice(0, 50)}..."`);
+      console.log(
+        `[MongoDB API] Cache hit for: "${sanitizedRequest.slice(0, 50)}..."`
+      );
       return NextResponse.json({
         success: true,
         result: cachedResult.result,
@@ -467,7 +484,12 @@ export async function POST(req: Request): Promise<NextResponse<ApiResponse>> {
       });
     }
 
-    console.log(`[MongoDB API] Generating query for: "${sanitizedRequest.slice(0, 50)}..."`);
+    console.log(
+      `[MongoDB API] Generating query for: "${sanitizedRequest.slice(
+        0,
+        50
+      )}..."`
+    );
     const prompt = await createMongoPrompt(sanitizedSchema, sanitizedRequest);
     const llm = getLing1TLLM();
     const generatedQueryStr = await llm.call(prompt);
@@ -478,13 +500,19 @@ export async function POST(req: Request): Promise<NextResponse<ApiResponse>> {
       operation: mongoQuery.operation,
       collection: mongoQuery.collection,
     });
-  
 
-    const { result, metadata } = await executeMongoOperation(dbInstance, mongoQuery, dryRun);
+    const { result, metadata } = await executeMongoOperation(
+      dbInstance,
+      mongoQuery,
+      dryRun
+    );
 
     const totalTimeMs = Date.now() - requestStartTime;
 
-    if (!dryRun && ["find", "aggregate", "countDocuments"].includes(mongoQuery.operation)) {
+    if (
+      !dryRun &&
+      ["find", "aggregate", "countDocuments"].includes(mongoQuery.operation)
+    ) {
       setCache(cacheKey, { result, query: mongoQuery, metadata });
     }
 
@@ -493,14 +521,15 @@ export async function POST(req: Request): Promise<NextResponse<ApiResponse>> {
         `(${totalTimeMs}ms, affected: ${metadata.affectedDocuments})`
     );
 
-    const dataset = Array.isArray(result) && result.length > 0 
-      ? mongoToDataset(result) 
-      : null;
+    const dataset =
+      Array.isArray(result) && result.length > 0
+        ? mongoToDataset(result)
+        : null;
 
     return NextResponse.json({
       success: true,
-      result: result.answer, 
-      dataset, 
+      result: result.answer,
+      dataset,
       generatedQuery: mongoQuery,
       metadata: {
         ...metadata,
@@ -508,8 +537,6 @@ export async function POST(req: Request): Promise<NextResponse<ApiResponse>> {
         cached: false,
       },
     });
-
-
   } catch (err: any) {
     const totalTimeMs = Date.now() - requestStartTime;
 

@@ -82,7 +82,7 @@ Respond in JSON format:
           "Content-Type": "application/json",
         },
         body: JSON.stringify({
-          model: config.model || "google/gemini-2.5-flash-lite",
+          model: config.model || "openai/gpt-oss-20b:free",
           messages: [
             { role: "system", content: systemPrompt },
             { role: "user", content: query },
