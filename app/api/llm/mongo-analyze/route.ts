@@ -82,7 +82,7 @@ Respond in JSON format:
           "Content-Type": "application/json",
         },
         body: JSON.stringify({
-          model: config.model || "deepseek/deepseek-r1:free",
+          model: config.model || "deepseek/deepseek-r1-0528:free",
           messages: [
             { role: "system", content: systemPrompt },
             { role: "user", content: query },

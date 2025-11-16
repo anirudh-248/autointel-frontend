@@ -117,7 +117,7 @@ Return ONLY a JSON array, no markdown formatting.`;
           "X-Title": config.title || "Data Analysis App",
         },
         body: JSON.stringify({
-          model: config.model || "deepseek/deepseek-r1:free",
+          model: config.model || "deepseek/deepseek-r1-0528:free",
           messages,
           temperature: 0.7,
         }),

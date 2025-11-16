@@ -80,7 +80,7 @@ Respond in JSON format:
           "X-Title": config.title || "Data Analysis App",
         },
         body: JSON.stringify({
-          model: config.model || "meta-llama/llama-4-maverick:free",
+          model: config.model || "deepseek/deepseek-r1-0528:free",
           messages,
         }),
       }
