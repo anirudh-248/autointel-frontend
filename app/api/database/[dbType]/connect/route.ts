@@ -94,7 +94,18 @@ export async function POST(
             );
           }
 
-          const dataset = mongoToDataset(allDocs);
+          const baseDataset = mongoToDataset(allDocs);
+          const dataset = {
+            ...baseDataset,
+            source: {
+              kind: "mongodb" as const,
+              name: "MongoDB Database",
+              meta: {
+                connectionString,
+                uri: connectionString,
+              },
+            },
+          };
           return NextResponse.json({
             dataset,
             totalCollections,

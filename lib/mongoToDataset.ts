@@ -1,15 +1,13 @@
-import {
-  ObjectId,
-  Decimal128,
-  Long,
-  Double,
-  Int32,
-} from "mongodb";
+import { ObjectId, Decimal128, Long, Double, Int32 } from "mongodb";
 
 function normalizeScalar(value: any): any {
   if (value == null) return null;
 
-  if (typeof value === "string" || typeof value === "number" || typeof value === "boolean") {
+  if (
+    typeof value === "string" ||
+    typeof value === "number" ||
+    typeof value === "boolean"
+  ) {
     return value;
   }
 
@@ -67,21 +65,23 @@ function normalizeDoc(doc: any): Record<string, any> {
 }
 
 function inferFieldType(values: any[]): string {
-  const filtered = values.filter(v => v !== null && v !== undefined);
+  const filtered = values.filter((v) => v !== null && v !== undefined);
 
   if (filtered.length === 0) return "null";
 
-  const types = new Set(filtered.map(v => {
-    if (typeof v === "string") {
-      if (/^\d{4}-\d{2}-\d{2}T/.test(v)) return "date";
-      return "string";
-    }
-    if (typeof v === "number") return "number";
-    if (typeof v === "boolean") return "boolean";
-    if (Array.isArray(v)) return "array";
-    if (typeof v === "object") return "object";
-    return "mixed";
-  }));
+  const types = new Set(
+    filtered.map((v) => {
+      if (typeof v === "string") {
+        if (/^\d{4}-\d{2}-\d{2}T/.test(v)) return "date";
+        return "string";
+      }
+      if (typeof v === "number") return "number";
+      if (typeof v === "boolean") return "boolean";
+      if (Array.isArray(v)) return "array";
+      if (typeof v === "object") return "object";
+      return "mixed";
+    })
+  );
 
   if (types.size === 1) return Array.from(types)[0];
   return "mixed";
@@ -89,24 +89,29 @@ function inferFieldType(values: any[]): string {
 
 export default function mongoToDataset(docs: any[]) {
   if (!docs || docs.length === 0) {
-    return { schema: { fields: [] }, rows: [], sampleRows: [] };
+    return { schema: { fields: [], rowCount: 0 }, rows: [], sampleRows: [] };
   }
 
   const normalizedRows = docs.map(normalizeDoc);
 
   const fieldNames = new Set<string>();
-  normalizedRows.forEach(r => Object.keys(r).forEach(k => fieldNames.add(k)));
+  normalizedRows.forEach((r) =>
+    Object.keys(r).forEach((k) => fieldNames.add(k))
+  );
 
-  const fields = Array.from(fieldNames).map(name => ({
+  const fields = Array.from(fieldNames).map((name) => ({
     name,
-    type: inferFieldType(normalizedRows.map(r => r[name]))
+    type: inferFieldType(normalizedRows.map((r) => r[name])),
   }));
 
-  const sampleRows = normalizedRows.slice(0, Math.min(10, Math.max(5, normalizedRows.length)));
+  const sampleRows = normalizedRows.slice(
+    0,
+    Math.min(10, Math.max(5, normalizedRows.length))
+  );
 
   return {
-    schema: { fields },
+    schema: { fields, rowCount: normalizedRows.length },
     rows: normalizedRows,
-    sampleRows
+    sampleRows,
   };
 }

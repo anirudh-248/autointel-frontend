@@ -35,6 +35,7 @@ import { useSQLOperations } from "@/hooks/use-sql-operations";
 import { useReportDownload } from "@/hooks/use-report-download";
 import { Message } from "@/lib/types";
 import StoryPresenter from "@/components/upload/StoryPresenter";
+import { connection } from "next/server";
 
 export default function UploadPage() {
   const [source, setSource] = useState<DataSourceType>("csv");
@@ -45,13 +46,13 @@ export default function UploadPage() {
   const [error, setError] = useState<string>("");
   const [openRouterKey, setOpenRouterKey] = useState<string>("");
   const [showAdSenseBanner, setShowAdSenseBanner] = useState(false);
-  const [selectedLanguage, setSelectedLanguage] = useState("en");
 
   // SQL-specific states
   const [sqlTableData, setSqlTableData] = useState<any[]>([]);
   const [sqlColumns, setSqlColumns] = useState<string[]>([]);
   const [userInfo, setUserInfo] = useState<any>(null);
   const [loadingUserInfo, setLoadingUserInfo] = useState(false);
+  const [loadingMongoConnection, setLoadingMongoConnection] = useState(false);
 
   // Cleaning options
   const [cleaningOptions, setCleaningOptions] = useState<DataCleaningOptions>({
@@ -102,25 +103,35 @@ export default function UploadPage() {
     if (!userInfo) return;
 
     const isSQLSource = ["postgresql", "mysql", "sqlite"].includes(source);
-    if (!isSQLSource) return;
+    const isMongoSource = source === "mongodb";
 
-    const connectionUrl = (() => {
-      switch (source) {
-        case "postgresql":
-          return { url: userInfo.postgres_db_url, dbType: "postgresql" };
-        case "mysql":
-          return { url: userInfo.mysql_db_url, dbType: "mysql" };
-        case "sqlite":
-          return { url: userInfo.sqlite_db_url, dbType: "sqlite" };
-        default:
-          return null;
+    if (!isSQLSource && !isMongoSource) return;
+
+    // Handle SQL sources
+    if (isSQLSource) {
+      const connectionUrl = (() => {
+        switch (source) {
+          case "postgresql":
+            return { url: userInfo.postgres_db_url, dbType: "postgresql" };
+          case "mysql":
+            return { url: userInfo.mysql_db_url, dbType: "mysql" };
+          case "sqlite":
+            return { url: userInfo.sqlite_db_url, dbType: "sqlite" };
+          default:
+            return null;
+        }
+      })();
+
+      if (connectionUrl?.url && !dataset) {
+        loadExistingConnection(connectionUrl.dbType, connectionUrl.url);
       }
-    })();
-
-    if (connectionUrl?.url && !dataset) {
-      loadExistingConnection(connectionUrl.dbType, connectionUrl.url);
     }
-  }, [source, userInfo]);
+
+    // Handle MongoDB source - auto-connect if URI exists
+    if (isMongoSource && userInfo?.mongodb_db_url && !dataset) {
+      loadExistingMongoConnection(userInfo.mongodb_db_url);
+    }
+  }, [source, userInfo, dataset]);
 
   const loadUserInfo = async () => {
     const token = localStorage.getItem("token");
@@ -210,6 +221,20 @@ export default function UploadPage() {
     setDataset(ds);
     setOriginalDataset(ds);
     setError("");
+
+    // If this is a database source, set the dbType and uri
+    if (
+      ds.source.kind &&
+      ["mongodb", "postgresql", "mysql", "sqlite"].includes(ds.source.kind)
+    ) {
+      setDbType(ds.source.kind);
+      if (ds.source.meta?.connectionString) {
+        setDburi(ds.source.meta.connectionString as string);
+      } else if (ds.source.meta?.uri) {
+        setDburi(ds.source.meta.uri as string);
+      }
+    }
+
     setMessages([
       {
         role: "assistant",
@@ -328,6 +353,43 @@ export default function UploadPage() {
     setActiveTab("table");
   };
 
+  const loadExistingMongoConnection = async (mongoUri: string) => {
+    setLoadingMongoConnection(true);
+    setDburi(mongoUri);
+    setDbType("mongodb");
+    setError("");
+
+    try {
+      const response = await fetch(`/api/database/mongodb/connect`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ connectionString: mongoUri }),
+      });
+
+      if (!response.ok) throw new Error("Failed to load MongoDB connection");
+
+      const data = await response.json();
+      handleDataLoaded(data.dataset);
+
+      setMessages([
+        {
+          role: "assistant",
+          content: `✓ Loaded existing MongoDB connection. ${data.totalDocs} documents from ${data.totalCollections} collection(s). Ready to query!`,
+        },
+      ]);
+    } catch (err: any) {
+      setError(err.message || "Failed to load MongoDB connection");
+      setMessages([
+        {
+          role: "assistant",
+          content: `✗ Error loading MongoDB connection: ${err.message}`,
+        },
+      ]);
+    } finally {
+      setLoadingMongoConnection(false);
+    }
+  };
+
   const sendMessage = async () => {
     if (!input.trim()) return;
 
@@ -338,6 +400,7 @@ export default function UploadPage() {
 
     try {
       const isSQLSource = ["postgresql", "sqlite", "mysql"].includes(dbType);
+      const isMongoSource = dbType === "mongodb";
       const isReportRequest = /report|summary|document|pdf/i.test(userMessage);
       const isVisualizationRequest =
         /visuali[sz]ation|chart|graph|plot|show.*data/i.test(userMessage);
@@ -404,6 +467,85 @@ export default function UploadPage() {
                 results: data.results || [],
               },
             },
+          ]);
+        }
+      } else if (isMongoSource) {
+        if (isReportRequest) {
+          const selectedVizContext = visualizations
+            .filter((viz) => selectedVizIds.has(viz.id))
+            .map((viz) => ({
+              id: viz.id,
+              title: viz.title,
+              description: viz.description,
+              plotlyData: viz.plotlyData,
+              plotlyLayout: viz.plotlyLayout,
+            }));
+
+          const response = await fetch("/api/llm/mongo-report", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({
+              connectionString: dburi,
+              config: config,
+              query: userMessage,
+              selectedVisualizations: selectedVizContext,
+              documents: dataset?.rows,
+            }),
+          });
+
+          if (!response.ok) throw new Error("Failed to generate report");
+
+          const data = await response.json();
+
+          // Save report for selection
+          const newReport = {
+            id: `report-${Date.now()}`,
+            title: `Report: ${userMessage.substring(0, 50)}`,
+            content: data.html.replace(/<[^>]*>/g, "").substring(0, 500),
+            html: data.html,
+          };
+
+          setReports((prev) => [...prev, newReport]);
+
+          setMessages((prev) => [
+            ...prev,
+            {
+              role: "assistant",
+              content: `✓ Report generated! ${
+                selectedVizContext.length > 0
+                  ? `Including ${selectedVizContext.length} visualization(s).`
+                  : ""
+              } Click to download or include in story.`,
+              html: data.html,
+            },
+          ]);
+        } else {
+          const response = await fetch("/api/llm/mongo-analyze", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({
+              documents: dataset?.rows || [],
+              query: userMessage,
+              config: config,
+              connectionString: dburi,
+            }),
+          });
+
+          if (!response.ok) throw new Error("Failed to analyze data");
+
+          const data = await response.json();
+
+          if (data.visualizations?.length > 0) {
+            setVisualizations((prev) => [
+              ...prev,
+              ...(data.visualizations || []),
+            ]);
+            setActiveTab("charts");
+          }
+
+          setMessages((prev) => [
+            ...prev,
+            { role: "assistant", content: data.answer },
           ]);
         }
       } else if (dataset) {
@@ -508,6 +650,7 @@ export default function UploadPage() {
     setVizLoading(true);
     try {
       const isSQLSource = ["postgresql", "sqlite", "mysql"].includes(dbType);
+      const isMongoSource = dbType === "mongodb";
 
       if (isSQLSource) {
         const vizArray = await sqlOps.requestSQLVisualizations();
@@ -520,6 +663,31 @@ export default function UploadPage() {
             content: `✓ Generated ${vizArray.length} visualization${
               vizArray.length !== 1 ? "s" : ""
             } across all database tables!`,
+          },
+        ]);
+      } else if (isMongoSource) {
+        const response = await fetch("/api/llm/mongo-visualize", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            documents: dataset?.rows || [],
+            config: config,
+            connectionString: userInfo.mongodb_db_url,
+          }),
+        });
+
+        if (!response.ok) throw new Error("Failed to generate visualizations");
+
+        const data = await response.json();
+        setVisualizations(data.visualizations || []);
+
+        setMessages((prev) => [
+          ...prev,
+          {
+            role: "assistant",
+            content: `✓ Generated ${
+              data.visualizations?.length || 0
+            } visualization${data.visualizations?.length !== 1 ? "s" : ""}!`,
           },
         ]);
       } else {
@@ -590,7 +758,7 @@ export default function UploadPage() {
     }
   };
 
-  const generateStory = async (query?: string, language?: string) => {
+  const generateStory = async (query?: string) => {
     setStoryLoading(true);
     try {
       const selectedVizContext = visualizations
@@ -636,7 +804,6 @@ export default function UploadPage() {
           selectedReports: selectedReportContext,
           config,
           reportContext: query || "Generate a compelling data story",
-          language: language || selectedLanguage,
         }),
       });
 
@@ -723,6 +890,41 @@ export default function UploadPage() {
           userInfo={userInfo}
         />
       </div>
+
+      {/* Loading MongoDB Connection */}
+      {loadingMongoConnection && (
+        <div className="mb-6">
+          <div className="flex items-center justify-center p-6 bg-slate-50 dark:bg-slate-900 rounded-lg border border-slate-200 dark:border-slate-800">
+            <div className="flex flex-col items-center gap-3">
+              <div className="animate-spin">
+                <svg
+                  className="h-6 w-6 text-blue-600"
+                  xmlns="http://www.w3.org/2000/svg"
+                  fill="none"
+                  viewBox="0 0 24 24"
+                >
+                  <circle
+                    className="opacity-25"
+                    cx="12"
+                    cy="12"
+                    r="10"
+                    stroke="currentColor"
+                    strokeWidth="4"
+                  ></circle>
+                  <path
+                    className="opacity-75"
+                    fill="currentColor"
+                    d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"
+                  ></path>
+                </svg>
+              </div>
+              <p className="text-sm text-slate-600 dark:text-slate-400">
+                Loading MongoDB connection...
+              </p>
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* Error Display */}
       {error && (
@@ -841,11 +1043,9 @@ export default function UploadPage() {
               onInputChange={setInput}
               onSendMessage={sendMessage}
               onDownloadReport={handleDownloadReport}
+              onGenerateStory={() => generateStory()}
               onToggleReportSelection={toggleReportSelection}
               selectedReportIds={selectedReportIds}
-              selectedLanguage={selectedLanguage} // ✅ NEW
-              onLanguageChange={setSelectedLanguage} // ✅ NEW
-              onGenerateStory={() => generateStory(undefined, selectedLanguage)} // ✅ PASS LANGUAGE TO BACKEND
             />
           </div>
         </div>
