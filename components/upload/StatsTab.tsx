@@ -1,5 +1,5 @@
 // components/StatsTab.tsx
-import React from "react";
+import React, { useEffect, useState } from "react";
 import { Card } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { DataSet } from "@/lib/types";
@@ -21,6 +21,43 @@ export const StatsTab: React.FC<StatsTabProps> = ({
   sqlTableData = [],
   sqlColumns = [],
 }) => {
+  const [mongoOverview, setMongoOverview] = useState<any | null>(null);
+  const [loading, setLoading] = useState<boolean>(false);
+  const [fetchError, setFetchError] = useState<string | null>(null);
+
+  useEffect(() => {
+    const fetchOverview = async () => {
+      if (dbType !== "mongodb" || !dburi) return;
+
+      setLoading(true);
+      setFetchError(null);
+      try {
+        const res = await fetch("/api/db/overview", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            connectionString: dburi,
+            includeDocuments: false,
+            includeStats: true,
+            includeFieldStats: true,
+            sampleSize: 10,
+          }),
+        });
+
+        if (!res.ok) throw new Error("Failed to fetch Mongo overview");
+        const data = await res.json();
+        setMongoOverview(data);
+      } catch (err: any) {
+        console.error("StatsTab: failed to fetch overview", err);
+        setFetchError(err?.message || "Failed to fetch overview");
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    fetchOverview();
+  }, [dbType, dburi]);
+
   if (isSQLSource) {
     return (
       <div className="space-y-4">
@@ -69,7 +106,112 @@ export const StatsTab: React.FC<StatsTabProps> = ({
       </div>
     );
   }
+  // MongoDB overview rendering
+  if (dbType === "mongodb") {
+    // show loading / error
+    if (loading) {
+      return (
+        <div className="space-y-4">
+          <Card className="p-4">
+            <p className="text-sm text-muted-foreground">
+              Loading MongoDB stats…
+            </p>
+          </Card>
+        </div>
+      );
+    }
 
+    if (fetchError) {
+      return (
+        <div className="space-y-4">
+          <Card className="p-4">
+            <p className="text-sm text-destructive">{fetchError}</p>
+          </Card>
+        </div>
+      );
+    }
+
+    const cluster = mongoOverview?.cluster || [];
+
+    return (
+      <div className="space-y-4">
+        <Card className="p-4">
+          <p className="text-sm text-muted-foreground">Databases Scanned</p>
+          <p className="text-2xl font-bold">{cluster.length}</p>
+        </Card>
+
+        {cluster.map((db: any) => (
+          <Card key={db.databaseName} className="p-4">
+            <div className="flex items-center justify-between mb-2">
+              <div>
+                <h3 className="font-semibold">{db.databaseName}</h3>
+                <p className="text-sm text-muted-foreground">
+                  {db.totalCollections} collections
+                </p>
+              </div>
+              <div className="text-sm text-muted-foreground">
+                {db.collections?.length || 0} shown
+              </div>
+            </div>
+
+            <div className="mt-3 space-y-2">
+              {db.collections?.map((col: any) => (
+                <div
+                  key={col.collectionName}
+                  className="grid grid-cols-3 gap-4 items-start"
+                >
+                  <div className="col-span-1">
+                    <span className="font-medium">{col.collectionName}</span>
+                  </div>
+                  <div className="col-span-1 text-sm text-muted-foreground">
+                    {col.documentCount} documents
+                  </div>
+                  <div className="col-span-1 text-sm text-muted-foreground">
+                    {col.attributeCount} fields • {col.indexes?.length || 0}{" "}
+                    indexes
+                  </div>
+
+                  {col.collectionStats && (
+                    <div className="col-span-3 text-xs text-muted-foreground mt-1">
+                      Storage: {col.collectionStats.storageSizeMB} • Avg doc:{" "}
+                      {col.collectionStats.avgDocumentSizeKB}
+                    </div>
+                  )}
+
+                  {col.fieldStats && (
+                    <div className="col-span-3 mt-2">
+                      <div className="text-sm font-medium mb-1">
+                        Top Field Stats
+                      </div>
+                      <div className="grid grid-cols-2 gap-2 text-xs text-muted-foreground">
+                        {Object.entries(col.fieldStats)
+                          .slice(0, 6)
+                          .map(([fname, fstat]: any) => (
+                            <div key={fname} className="p-2 border rounded">
+                              <div className="font-medium">{fname}</div>
+                              <div>
+                                Types:{" "}
+                                {Array.isArray(fstat.type)
+                                  ? fstat.type.join(", ")
+                                  : fstat.type}
+                              </div>
+                              <div>Usage: {fstat.usageFrequency}%</div>
+                              <div>Nulls: {fstat.nullPercentage}%</div>
+                            </div>
+                          ))}
+                      </div>
+                    </div>
+                  )}
+                </div>
+              ))}
+            </div>
+          </Card>
+        ))}
+      </div>
+    );
+  }
+
+  // Fallback for file / plain dataset
   return (
     <div className="space-y-4">
       <div className="grid grid-cols-2 gap-4">

@@ -22,6 +22,7 @@ import {
   Database,
 } from "lucide-react";
 import { PreviewTable } from "@/components/upload/PreviewTable";
+import MongoOverview from "@/components/upload/MongoOverview";
 import { getUserInfo } from "@/lib/api";
 
 import { ApiKeyConfig } from "@/components/upload/APIKeyConfig";
@@ -996,6 +997,8 @@ export default function UploadPage() {
                         </p>
                       </div>
                     )
+                  ) : dbType === "mongodb" ? (
+                    <MongoOverview dburi={dburi} dbType={dbType} />
                   ) : (
                     <PreviewTable
                       rows={dataset.rows}
