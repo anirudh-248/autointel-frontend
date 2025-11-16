@@ -112,11 +112,11 @@ export default function UploadPage() {
       const connectionUrl = (() => {
         switch (source) {
           case "postgresql":
-            return { url: userInfo.postgres_db_url, dbType: "postgresql" };
+            return { url: userInfo?.postgres_db_url, dbType: "postgresql" };
           case "mysql":
-            return { url: userInfo.mysql_db_url, dbType: "mysql" };
+            return { url: userInfo?.mysql_db_url, dbType: "mysql" };
           case "sqlite":
-            return { url: userInfo.sqlite_db_url, dbType: "sqlite" };
+            return { url: userInfo?.sqlite_db_url, dbType: "sqlite" };
           default:
             return null;
         }
@@ -672,7 +672,7 @@ export default function UploadPage() {
           body: JSON.stringify({
             documents: dataset?.rows || [],
             config: config,
-            connectionString: userInfo.mongodb_db_url,
+            connectionString: userInfo?.mongodb_db_url || "",
           }),
         });
 
