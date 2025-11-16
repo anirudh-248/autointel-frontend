@@ -125,7 +125,7 @@ Return ONLY the HTML content (no markdown code blocks, just pure HTML).`;
           "Content-Type": "application/json",
         },
         body: JSON.stringify({
-          model: config.model || "deepseek/deepseek-r1-0528:free",
+          model: config.model || "google/gemini-2.5-flash-lite",
           messages,
         }),
       }

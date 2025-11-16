@@ -163,7 +163,7 @@ Make speaker notes engaging and suitable for text-to-speech. Keep them under 100
           "X-Title": config.title || "Data Analysis App",
         },
         body: JSON.stringify({
-          model: config.model || "deepseek/deepseek-r1-0528:free",
+          model: config.model || "google/gemini-2.5-flash-lite",
           messages,
           temperature: 0.8,
         }),

@@ -82,7 +82,7 @@ Respond in JSON format:
           "Content-Type": "application/json",
         },
         body: JSON.stringify({
-          model: config.model || "deepseek/deepseek-r1-0528:free",
+          model: config.model || "google/gemini-2.5-flash-lite",
           messages: [
             { role: "system", content: systemPrompt },
             { role: "user", content: query },
