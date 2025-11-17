@@ -15,6 +15,7 @@ export default function ProfilePage() {
   const [info, setInfo] = React.useState<any>(null);
   const [msg, setMsg] = React.useState("");
   const [loading, setLoading] = React.useState(false);
+  const [mongodb, setMongodb] = React.useState("");
 
   React.useEffect(() => {
     (async () => {
@@ -28,6 +29,7 @@ export default function ProfilePage() {
           setPostgres(parsed?.data.postgres_db_url || "");
           setSqlite(parsed?.data.sqlite_db_url || "");
           setMysql(parsed?.data.mysql_db_url || "");
+          setMongodb(parsed?.data.mongodb_db_url || "");
         } catch {}
       } catch {}
     })();
@@ -43,6 +45,7 @@ export default function ProfilePage() {
         postgres_db_url: postgres,
         sqlite_db_url: sqlite,
         mysql_db_url: mysql,
+        mongodb_uri: mongodb,
       });
       setMsg("Saved");
     } catch (e: any) {
@@ -81,6 +84,11 @@ export default function ProfilePage() {
           placeholder={`${mysql}`}
           value={mysql}
           onChange={(e) => setMysql(e.target.value)}
+        />
+        <Input
+          placeholder={`${mongodb}`}
+          value={mongodb}
+          onChange={(e) => setMongodb(e.target.value)}
         />
         <Button onClick={onSave} disabled={loading}>
           {loading ? "Saving..." : "Save"}

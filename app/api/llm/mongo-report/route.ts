@@ -3,7 +3,13 @@ import { flattenDocuments } from "@/lib/flatten";
 
 export async function POST(req: NextRequest) {
   try {
-    const { documents, config } = await req.json();
+    const {
+      documents,
+      config,
+      query,
+      selectedVisualizations,
+      connectionString,
+    } = await req.json();
 
     if (!documents || !config?.apiKey) {
       return NextResponse.json(
@@ -14,17 +20,44 @@ export async function POST(req: NextRequest) {
 
     const flattened = flattenDocuments(documents);
     const sampleData = flattened.slice(0, 10);
+    const reportQuery =
+      query ||
+      "Generate a detailed, comprehensive analytical report of this dataset";
+
+    let schemaInfo = {};
+    try {
+      const ex = await fetch(`${process.env.BASE_URL}/api/db/overview`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ connectionString }),
+      });
+      if (ex.ok) {
+        schemaInfo = await ex.json();
+      }
+    } catch (schemaErr) {
+      console.warn("Could not fetch schema info:", schemaErr);
+      // Continue without schema info
+    }
 
     const systemPrompt = `You are a data analyst creating professional reports. Generate a comprehensive HTML report based on the dataset. Use Chart.js for charts. Ensure charts are compatible with PDF rendering as per instructions.;
 
 You must include the selected visualizations in the report. If none are selected, choose appropriate visualizations based on the data.
-
+Selected Visualizations: ${
+      selectedVisualizations && selectedVisualizations.length > 0
+        ? selectedVisualizations.join(", ")
+        : "None"
+    }.
+Use Chart.js for charts. Ensure charts are compatible with PDF rendering as per instructions.
 Dataset Sample:
-${JSON.stringify(sampleData, null, 2)}
+Flatttened Documents: ${JSON.stringify(flattenDocuments, null, 2)}
+
+Here is the complete schema information of the mongo database:
+${JSON.stringify(schemaInfo, null, 2)}
+Make sure to include the structure of the DB in the report. 
 
 Create a very detailed beautiful HTML report that includes:
 1. Executive Summary
-2. Data Overview (schema, row counts, data types)
+2. Data Overview (schema, collections, row counts, data types)
 3. Key Findings and Insights
 4. Statistical Analysis
 5. Trends and Patterns
@@ -79,6 +112,10 @@ Format the response as valid HTML that can be converted to PDF. Use proper seman
 
 Return ONLY the HTML content (no markdown code blocks, just pure HTML).`;
 
+    const messages = [
+      { role: "system", content: systemPrompt },
+      { role: "user", content: reportQuery },
+    ];
     const response = await fetch(
       "https://openrouter.ai/api/v1/chat/completions",
       {
@@ -88,8 +125,8 @@ Return ONLY the HTML content (no markdown code blocks, just pure HTML).`;
           "Content-Type": "application/json",
         },
         body: JSON.stringify({
-          model: config.model || "meta-llama/llama-4-maverick:free",
-          messages: [{ role: "system", content: systemPrompt }],
+          model: config.model || "openai/gpt-oss-20b:free",
+          messages,
         }),
       }
     );
@@ -100,6 +137,7 @@ Return ONLY the HTML content (no markdown code blocks, just pure HTML).`;
 
     return NextResponse.json({ html });
   } catch (err: any) {
+    console.error("mongo-report error:", err);
     return NextResponse.json({ error: err.message }, { status: 500 });
   }
 }

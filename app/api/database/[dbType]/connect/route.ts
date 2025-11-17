@@ -1,7 +1,7 @@
 // app/api/database/[dbType]/connect/route.ts
 import { NextResponse } from "next/server";
 import { DataProcessor } from "@/lib/dataProcessor";
-import { mongoToDataset } from "@/lib/mongoToDataset";
+import mongoToDataset from "@/lib/mongoToDataset";
 
 export async function POST(
   request: Request,
@@ -94,7 +94,18 @@ export async function POST(
             );
           }
 
-          const dataset = mongoToDataset(allDocs);
+          const baseDataset = mongoToDataset(allDocs);
+          const dataset = {
+            ...baseDataset,
+            source: {
+              kind: "mongodb" as const,
+              name: "MongoDB Database",
+              meta: {
+                connectionString,
+                uri: connectionString,
+              },
+            },
+          };
           return NextResponse.json({
             dataset,
             totalCollections,

@@ -1,9 +1,17 @@
 import { NextRequest, NextResponse } from "next/server";
 import { flattenDocuments } from "@/lib/flatten";
+import { VisualizationSpec } from "@/lib/types";
+import { getUserInfo } from "@/lib/api";
+
+interface LLMAnalysisResponse {
+  answer: string;
+  visualizations: VisualizationSpec[];
+  followUps: string[];
+}
 
 export async function POST(req: NextRequest) {
   try {
-    const { documents, query, config } = await req.json();
+    const { documents, query, config, connectionString } = await req.json();
 
     if (!documents || !Array.isArray(documents) || !config?.apiKey) {
       return NextResponse.json({ error: "Invalid request" }, { status: 400 });
@@ -11,19 +19,26 @@ export async function POST(req: NextRequest) {
 
     const flattened = flattenDocuments(documents);
     const fields = Object.keys(flattened[0] || {});
-    const schemaSummary = fields.map((f) => `- ${f}`).join("\n");
+    const ex = await fetch(`${process.env.BASE_URL}/api/db/overview`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ connectionString }),
+    });
+    const schemaFull = await ex.json();
 
     const sampleData = flattened.slice(0, 6);
 
     const systemPrompt = `You are a MongoDB-aware data analysis assistant. 
 The dataset has been flattened from nested documents. 
-Fields:
-${schemaSummary}
+Dataset: ${JSON.stringify(flattened, null, 2)}
 
 Total records: ${flattened.length}
 
 Sample data:
 ${JSON.stringify(sampleData, null, 2)}
+
+Here is the detailed schema of the Mongo Database:
+${JSON.stringify(schemaFull, null, 2)}
 
 Your task is to:
 1. Answer the user's query based on the data
@@ -67,7 +82,7 @@ Respond in JSON format:
           "Content-Type": "application/json",
         },
         body: JSON.stringify({
-          model: config.model || "meta-llama/llama-4-maverick:free",
+          model: config.model || "openai/gpt-oss-20b:free",
           messages: [
             { role: "system", content: systemPrompt },
             { role: "user", content: query },
@@ -78,10 +93,23 @@ Respond in JSON format:
 
     const data = await response.json();
     const content = data.choices[0]?.message?.content || "";
-    const parsed = JSON.parse(content.replace(/```json|```/g, ""));
 
-    return NextResponse.json(parsed);
+    let parsed: any = {};
+    try {
+      parsed = JSON.parse(content.replace(/```json|```/g, ""));
+    } catch (parseErr) {
+      console.warn("Could not parse LLM response as JSON:", parseErr);
+    }
+
+    const result: LLMAnalysisResponse = {
+      answer: parsed.answer || content,
+      visualizations: parsed.visualizations || [],
+      followUps: parsed.followUps || [],
+    };
+
+    return NextResponse.json(result);
   } catch (err: any) {
+    console.error("mongo-analyze error:", err);
     return NextResponse.json({ error: err.message }, { status: 500 });
   }
 }

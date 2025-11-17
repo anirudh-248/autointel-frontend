@@ -25,6 +25,7 @@ import { v4 as uuidv4 } from "uuid";
 
 // Global store for vector stores by namespace/datasetId
 const vectorStores = new Map<string, MemoryVectorStore>();
+import { updateUserInfo } from "@/lib/api";
 
 // JSON Handler
 export function JsonHandler({ onDataLoaded, onError }: any) {
@@ -432,7 +433,12 @@ export function TextPdfHandler({
 }
 
 // Database Connection Handler
-export function DatabaseHandler({ onDataLoaded, onError, dbType }: any) {
+export function DatabaseHandler({
+  onDataLoaded,
+  onError,
+  dbType,
+  connStr,
+}: any) {
   const [connectionString, setConnectionString] = useState("");
   const [loading, setLoading] = useState(false);
 
@@ -453,6 +459,18 @@ export function DatabaseHandler({ onDataLoaded, onError, dbType }: any) {
       if (!response.ok) throw new Error("Failed to connect to database");
 
       const data = await response.json();
+
+      // Save MongoDB URI to user account
+
+      try {
+        await updateUserInfo({ mongodb_db_url: connectionString });
+      } catch (saveErr) {
+        console.warn("Could not save MongoDB URI to user account:", saveErr);
+        // Continue even if save fails
+      }
+
+      localStorage.setItem("mongo_uri", connectionString);
+
       onDataLoaded(data.dataset);
       setConnectionString("");
     } catch (err: any) {
