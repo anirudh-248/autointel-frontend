@@ -16,7 +16,6 @@ export function applyLlamaSettings(
     baseURL: llmConfig.baseURL,
     model: llmConfig.model,
     temperature: llmConfig.temperature,
-    maxTokens: llmConfig.maxTokens,
   });
 
   (Settings as any).embedModel = new OpenAIEmbedding({
