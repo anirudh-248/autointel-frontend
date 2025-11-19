@@ -140,7 +140,11 @@ export class OpenAIChatLLM extends BaseLLM {
       .map((part) => {
         if (part.type === "text") return part.text;
         if (part.type === "image_url") return `[image:${part.image_url.url}]`;
-        if ("data" in part && part.data) return `[${part.type} payload]`;
+        // Type-safe check for data property
+        const partWithData = part as any;
+        if ("data" in partWithData && partWithData.data) {
+          return `[${partWithData.type} payload]`;
+        }
         return JSON.stringify(part);
       })
       .join("\n");
