@@ -486,6 +486,8 @@ export default function UploadPage() {
 
           const data = await response.json();
 
+          console.log("Parsed report data:", data.answer);
+
           setMessages((prev) => [
             ...prev,
             {
@@ -520,9 +522,9 @@ export default function UploadPage() {
 
           const data = await response.json();
           const parsedData = JSON.parse(data.answer);
-          console.log("Parsed analysis data:", parsedData.visualizations);
-          if (data.visualizations?.length > 0) {
-            setVisualizations(JSON.parse(parsedData.visualizations));
+
+          if (parsedData.visualizations?.length > 0) {
+            setVisualizations(parsedData.visualizations);
             setActiveTab("charts");
           }
 
@@ -836,18 +838,17 @@ export default function UploadPage() {
         if (!response.ok) throw new Error("Failed to generate visualizations");
 
         const data = await response.json();
+
         const parsedData = JSON.parse(data.answer);
-        console.log("Parsed visualization data:", parsedData.visualizations);
-        setVisualizations(parsedData.visualizations || []);
+
+        setVisualizations(parsedData || []);
 
         setMessages((prev) => [
           ...prev,
           {
             role: "assistant",
-            content: `✓ Generated ${
-              data.visualizations?.length || 0
-            } visualization${
-              data.answer.visualizations?.length !== 1 ? "s" : ""
+            content: `✓ Generated ${parsedData?.length || 0} visualization${
+              parsedData?.length !== 1 ? "s" : ""
             }!`,
           },
         ]);

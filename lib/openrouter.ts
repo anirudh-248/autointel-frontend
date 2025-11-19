@@ -5,14 +5,12 @@ type PartialClientConfig = {
   embeddingModel?: string;
   embeddingDimensions?: number;
   temperature?: number;
-  maxTokens?: number;
 };
 
 export type LLMClientConfig = Required<
-  Omit<PartialClientConfig, "temperature" | "maxTokens" | "embeddingDimensions">
+  Omit<PartialClientConfig, "temperature" | "embeddingDimensions">
 > & {
   temperature: number;
-  maxTokens: number;
   embeddingDimensions?: number;
 };
 
@@ -103,6 +101,5 @@ export function resolveOpenRouterConfig(
     embeddingModel,
     embeddingDimensions,
     temperature: config?.temperature ?? 0.1,
-    maxTokens: config?.maxTokens ?? 512,
   };
 }
