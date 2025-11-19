@@ -1,7 +1,7 @@
 // components/DataSourceInput.tsx
 import React from "react";
 import { Card } from "@/components/ui/card";
-import { DataSet, DataSourceType } from "@/lib/types";
+import { DataSet, DataSourceType, OpenRouterConfig } from "@/lib/types";
 import { CsvHandler } from "@/components/upload/CSVHandler";
 import { ExcelHandler } from "@/components/upload/ExcelHandler";
 import { SheetsHandler } from "@/components/upload/SheetsHandler";
@@ -24,6 +24,7 @@ type DataSourceInputProps = {
   onError: (err: string) => void;
   onUriLoaded: (uri: string, type: string) => void;
   userInfo: any;
+  config: OpenRouterConfig;
 };
 
 export const DataSourceInput: React.FC<DataSourceInputProps> = ({
@@ -32,6 +33,7 @@ export const DataSourceInput: React.FC<DataSourceInputProps> = ({
   onError,
   onUriLoaded,
   userInfo,
+  config,
 }) => {
   const props = { onDataLoaded, onError };
   const sqlprops = { onUriLoaded: onUriLoaded, onError };
@@ -82,7 +84,7 @@ export const DataSourceInput: React.FC<DataSourceInputProps> = ({
       return <JsonHandler {...props} />;
     case "text":
     case "pdf":
-      return <TextPdfHandler {...props} type={source} />;
+      return <TextPdfHandler {...props} type={source} config={config} />;
     case "postgresql":
       return <PostgresHandler {...sqlprops} dbType="postgresql" />;
     case "mysql":

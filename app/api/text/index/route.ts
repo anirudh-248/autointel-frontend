@@ -1,42 +1,17 @@
 import { NextRequest, NextResponse } from "next/server";
-import {
-  Document,
-  VectorStoreIndex,
-  Settings,
-  storageContextFromDefaults,
-} from "llamaindex";
+import { Document, VectorStoreIndex, storageContextFromDefaults } from "llamaindex";
 import { PineconeVectorStore } from "llamaindex/vector-store/PineconeVectorStore";
-import { Pinecone } from "@pinecone-database/pinecone";
-import { OpenAIEmbedding } from "@llamaindex/openai";
-import { OpenAI } from "@llamaindex/openai";
+import { resolveOpenRouterConfig } from "@/lib/openrouter";
+import { applyLlamaSettings } from "@/lib/llama/config";
 
 export async function POST(request: NextRequest) {
-  const body = await request.json();
-  const { text, namespace, config } = body;
-  // Initialize Pinecone client
-  const pinecone = new Pinecone({
-    apiKey: process.env.PINECONE_API_KEY!,
-  });
-
-  // Configure LlamaIndex settings
-  Settings.llm = new OpenAI({
-    apiKey: config.apiKey,
-    baseURL: "https://openrouter.ai/api/v1",
-    model: "openrouter/sherlock-dash-alpha", // Popular OpenRouter model
-    temperature: 0.1,
-    maxTokens: 512,
-  });
-
-  Settings.embedModel = new OpenAIEmbedding({
-    apiKey: config.apiKey, // Can use same OpenRouter key
-    baseURL: "https://openrouter.ai/api/v1",
-    model: "openai/text-embedding-3-large",
-  });
-
-  // Set chunk size and overlap
-  Settings.chunkSize = 1024;
-  Settings.chunkOverlap = 20;
   try {
+    const body = await request.json();
+    const { text, namespace, config } = body;
+
+    const llmConfig = resolveOpenRouterConfig(config);
+    applyLlamaSettings(llmConfig, { chunkSize: 1024, chunkOverlap: 20 });
+
     // Validate input
     if (!text || typeof text !== "string") {
       return NextResponse.json(

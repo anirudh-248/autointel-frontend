@@ -1,37 +1,17 @@
 import { NextRequest, NextResponse } from "next/server";
-import {
-  VectorStoreIndex,
-  Settings,
-  storageContextFromDefaults,
-} from "llamaindex";
+import { VectorStoreIndex, storageContextFromDefaults } from "llamaindex";
 import { PineconeVectorStore } from "llamaindex/vector-store/PineconeVectorStore";
-import { Pinecone } from "@pinecone-database/pinecone";
-import { OpenAI, OpenAIEmbedding } from "@llamaindex/openai";
+import { resolveOpenRouterConfig } from "@/lib/openrouter";
+import { applyLlamaSettings } from "@/lib/llama/config";
 
 export async function POST(request: NextRequest) {
-  const body = await request.json();
-  const { query, indexId, topK, selectedVisualizations, config } = body;
-  // Initialize Pinecone client
-  const pinecone = new Pinecone({
-    apiKey: process.env.PINECONE_API_KEY!,
-  });
-
-  // Configure LlamaIndex settings
-  Settings.llm = new OpenAI({
-    apiKey: config.apiKey,
-    baseURL: "https://openrouter.ai/api/v1",
-    model: "openrouter/sherlock-dash-alpha", // Popular OpenRouter model
-    temperature: 0.1,
-    maxTokens: 512,
-  });
-
-  Settings.embedModel = new OpenAIEmbedding({
-    apiKey: config.apiKey, // Can use same OpenRouter key
-    baseURL: "https://openrouter.ai/api/v1",
-    model: "openai/text-embedding-3-large",
-  });
-
   try {
+    const body = await request.json();
+    const { query, indexId, topK, selectedVisualizations, config } = body;
+
+    const llmConfig = resolveOpenRouterConfig(config);
+
+    applyLlamaSettings(llmConfig);
     // Validate input
     if (!query || typeof query !== "string") {
       return NextResponse.json(

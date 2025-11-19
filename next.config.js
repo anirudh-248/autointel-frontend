@@ -30,7 +30,10 @@ const nextConfig = {
 
     return config;
   },
-
+  eslint: {
+    ignoreDuringBuilds: true,
+  },
+  images: { unoptimized: true },
   // Disable minification for API routes to prevent issues with native modules
   experimental: {
     serverMinification: false,

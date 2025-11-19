@@ -519,15 +519,16 @@ export default function UploadPage() {
           if (!response.ok) throw new Error("Failed to analyze data");
 
           const data = await response.json();
-
+          const parsedData = JSON.parse(data.answer);
+          console.log("Parsed analysis data:", parsedData.visualizations);
           if (data.visualizations?.length > 0) {
-            setVisualizations(data.visualizations);
+            setVisualizations(JSON.parse(parsedData.visualizations));
             setActiveTab("charts");
           }
 
           setMessages((prev) => [
             ...prev,
-            { role: "assistant", content: data.answer },
+            { role: "assistant", content: parsedData.answer },
           ]);
           return;
         }
@@ -835,7 +836,9 @@ export default function UploadPage() {
         if (!response.ok) throw new Error("Failed to generate visualizations");
 
         const data = await response.json();
-        setVisualizations(data.answer.visualizations || []);
+        const parsedData = JSON.parse(data.answer);
+        console.log("Parsed visualization data:", parsedData.visualizations);
+        setVisualizations(parsedData.visualizations || []);
 
         setMessages((prev) => [
           ...prev,
@@ -1046,6 +1049,7 @@ export default function UploadPage() {
           onError={handleError}
           onUriLoaded={handleUriLoaded}
           userInfo={userInfo}
+          config={config}
         />
       </div>
 

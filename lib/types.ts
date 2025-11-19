@@ -66,9 +66,14 @@ export interface AnalysisResult {
 
 export interface OpenRouterConfig {
   apiKey: string;
+  model?: string;
+  baseURL?: string;
+  embeddingModel?: string;
+  embeddingDimensions?: number;
+  temperature?: number;
+  maxTokens?: number;
   referer?: string;
   title?: string;
-  model?: string;
 }
 
 // LLM Request/Response types

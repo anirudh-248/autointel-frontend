@@ -1,7 +1,7 @@
 "use client";
 
 import React, { useState, useEffect } from "react";
-import { DataSet } from "@/lib/types";
+import { DataSet, OpenRouterConfig } from "@/lib/types";
 import { DataProcessor } from "@/lib/dataProcessor";
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -94,6 +94,7 @@ interface TextPdfHandlerProps {
   onDataLoaded: (dataset: DataSet) => void;
   onError: (error: string) => void;
   type: "text" | "pdf";
+  config: OpenRouterConfig;
 }
 
 // Text/PDF Handler
@@ -103,6 +104,7 @@ export function TextPdfHandler({
   onDataLoaded,
   onError,
   type,
+  config,
 }: TextPdfHandlerProps) {
   const [processing, setProcessing] = useState(false);
   const [progress, setProgress] = useState(0);
@@ -155,13 +157,23 @@ export function TextPdfHandler({
       // Step 3: Index document using our new API
       console.log(`[Upload] Calling /api/index with indexId: ${indexId}`);
 
+      const payload: {
+        text: string;
+        namespace: string;
+        config?: OpenRouterConfig;
+      } = {
+        text,
+        namespace: indexId,
+      };
+
+      if (config?.apiKey) {
+        payload.config = config;
+      }
+
       const indexResponse = await fetch("/api/text/index", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          text,
-          namespace: indexId,
-        }),
+        body: JSON.stringify(payload),
       });
 
       if (!indexResponse.ok) {
