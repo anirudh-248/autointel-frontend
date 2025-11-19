@@ -22,7 +22,6 @@ interface OpenAIChatConfig {
   model?: string;
   temperature?: number;
   topP?: number;
-  maxTokens?: number;
   baseURL?: string;
 }
 
@@ -36,21 +35,18 @@ export class OpenAIChatLLM extends BaseLLM {
   private readonly model: string;
   private readonly temperature: number;
   private readonly topP: number;
-  private readonly maxTokens?: number;
 
-  constructor({ apiKey, model, temperature, topP, maxTokens, baseURL }: OpenAIChatConfig) {
+  constructor({ apiKey, model, temperature, topP, baseURL }: OpenAIChatConfig) {
     super();
 
     this.client = new OpenAI({ apiKey, baseURL });
     this.model = model ?? DEFAULT_MODEL;
     this.temperature = temperature ?? 0.2;
     this.topP = topP ?? 1;
-    this.maxTokens = maxTokens;
     this.metadata = {
       model: this.model,
       temperature: this.temperature,
       topP: this.topP,
-      maxTokens: this.maxTokens,
       contextWindow: DEFAULT_CONTEXT_WINDOW,
       tokenizer: undefined,
       structuredOutput: false,
@@ -78,7 +74,6 @@ export class OpenAIChatLLM extends BaseLLM {
         messages,
         temperature: this.temperature,
         top_p: this.topP,
-        max_tokens: this.maxTokens,
         stream: true,
       });
 
@@ -100,7 +95,6 @@ export class OpenAIChatLLM extends BaseLLM {
       messages,
       temperature: this.temperature,
       top_p: this.topP,
-      max_tokens: this.maxTokens,
     });
 
     const choice = completion.choices[0];
