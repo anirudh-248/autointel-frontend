@@ -447,23 +447,6 @@ export default function UploadPage() {
       }
       // ===== TEXT/PDF SOURCE HANDLING =====
       if (isTextSource && dataset?.id) {
-        // Verify the dataset is indexed before attempting analysis
-        const verifyResponse = await fetch(
-          `/api/text/verify?datasetId=${encodeURIComponent(dataset.id)}`
-        );
-        if (verifyResponse.ok) {
-          const verifyData = await verifyResponse.json();
-          if (!verifyData.exists) {
-            throw new Error(
-              `Dataset not indexed. Please re-upload the document. ` +
-                `Dataset ID: ${dataset.id}. Available datasets: ${
-                  verifyData.allIndexedDatasets?.join(", ") || "none"
-                }`
-            );
-          }
-          console.log("[Chat] Dataset verified:", verifyData);
-        }
-
         // Route to appropriate endpoint based on request type
         if (isReportRequest) {
           // Generate HTML report for PDF/Text
@@ -483,13 +466,11 @@ export default function UploadPage() {
             method: "POST",
             headers: { "Content-Type": "application/json" },
             body: JSON.stringify({
-              datasetId: dataset.id,
+              indexId: dataset.indexId,
               query: userMessage,
-              config: {
-                apiKey: config.apiKey,
-                model: config.model || "gemini-2.5-flash-lite",
-              },
+              topK: 5,
               selectedVisualizations: selectedVizContext,
+              config: config,
             }),
           });
 
@@ -520,75 +501,6 @@ export default function UploadPage() {
 
           setLoading(false);
           return;
-        } else if (isVisualizationRequest) {
-          // Request visualizations for PDF/Text
-          console.log("[Chat] Requesting visualizations for text/pdf source");
-
-          const response = await fetch("/api/text/analyze", {
-            method: "POST",
-            headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({
-              datasetId: dataset.id,
-              query:
-                userMessage +
-                " Please suggest relevant visualizations for this data.",
-              config: {
-                apiKey: config.apiKey,
-                model: config.model || "gemini-2.5-flash-lite",
-              },
-            }),
-          });
-
-          if (!response.ok) {
-            const errorData = await response.json();
-            const errorMessage =
-              errorData.details || errorData.error || "Failed to analyze text";
-            console.error("Analyze endpoint error:", errorData);
-            throw new Error(errorMessage);
-          }
-
-          const data = await response.json();
-
-          // Try to extract visualizations from the response
-          let vizArray = [];
-          try {
-            // The response might contain JSON with visualizations
-            const jsonMatch = data.answer.match(
-              /\{[\s\S]*"visualizations"[\s\S]*\}/
-            );
-            if (jsonMatch) {
-              const parsed = JSON.parse(jsonMatch[0]);
-              vizArray = parsed.visualizations || [];
-            }
-          } catch (e) {
-            console.warn("Could not parse visualizations from response:", e);
-          }
-
-          if (vizArray.length > 0) {
-            setVisualizations((prev) => [...prev, ...vizArray]);
-            setMessages((prev) => [
-              ...prev,
-              {
-                role: "assistant",
-                content: `✓ Generated ${vizArray.length} visualization${
-                  vizArray.length !== 1 ? "s" : ""
-                } from your query!\n\n${data.answer}`,
-              },
-            ]);
-            setActiveTab("charts");
-          } else {
-            // No visualizations, just show the answer
-            setMessages((prev) => [
-              ...prev,
-              {
-                role: "assistant",
-                content: data.answer,
-              },
-            ]);
-          }
-
-          setLoading(false);
-          return;
         } else {
           // Regular analysis for PDF/Text
           console.log("[Chat] Regular analysis for text/pdf source");
@@ -597,34 +509,26 @@ export default function UploadPage() {
             method: "POST",
             headers: { "Content-Type": "application/json" },
             body: JSON.stringify({
-              datasetId: dataset.id,
+              indexId: dataset.indexId,
               query: userMessage,
-              config: {
-                apiKey: config.apiKey,
-                model: config.model || "gemini-2.5-flash-lite",
-              },
+              topK: 5,
+              config: config,
             }),
           });
 
-          if (!response.ok) {
-            const errorData = await response.json();
-            const errorMessage =
-              errorData.details || errorData.error || "Failed to analyze text";
-            console.error("Analyze endpoint error:", errorData);
-            throw new Error(errorMessage);
-          }
+          if (!response.ok) throw new Error("Failed to analyze data");
 
           const data = await response.json();
 
+          if (data.visualizations?.length > 0) {
+            setVisualizations(data.visualizations);
+            setActiveTab("charts");
+          }
+
           setMessages((prev) => [
             ...prev,
-            {
-              role: "assistant",
-              content: data.answer,
-            },
+            { role: "assistant", content: data.answer },
           ]);
-
-          setLoading(false);
           return;
         }
       }
@@ -689,10 +593,6 @@ export default function UploadPage() {
             },
           ]);
         }
-      }
-
-      // ===== CSV/JSON/EXCEL SOURCE HANDLING =====
-      else if (dataset) {
       } else if (isMongoSource) {
         if (isReportRequest) {
           const selectedVizContext = visualizations
@@ -772,7 +672,10 @@ export default function UploadPage() {
             { role: "assistant", content: data.answer },
           ]);
         }
-      } else if (dataset) {
+      }
+
+      // ===== CSV/JSON/EXCEL SOURCE HANDLING =====
+      else if (dataset) {
         if (isReportRequest) {
           const selectedVizContext = visualizations
             .filter((viz) => selectedVizIds.has(viz.id))
@@ -876,6 +779,8 @@ export default function UploadPage() {
     try {
       const isSQLSource = ["postgresql", "sqlite", "mysql"].includes(dbType);
       const isMongoSource = dbType === "mongodb";
+      const isTextSource =
+        dataset?.source.kind === "text" || dataset?.source.kind === "pdf";
 
       if (isSQLSource) {
         const vizArray = await sqlOps.requestSQLVisualizations();
@@ -913,6 +818,34 @@ export default function UploadPage() {
             content: `✓ Generated ${
               data.visualizations?.length || 0
             } visualization${data.visualizations?.length !== 1 ? "s" : ""}!`,
+          },
+        ]);
+      } else if (isTextSource) {
+        // Text/PDF source handling isTextSource
+        const response = await fetch("/api/text/visualize", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            indexId: dataset?.indexId,
+            topK: 5,
+            config: config,
+          }),
+        });
+
+        if (!response.ok) throw new Error("Failed to generate visualizations");
+
+        const data = await response.json();
+        setVisualizations(data.answer.visualizations || []);
+
+        setMessages((prev) => [
+          ...prev,
+          {
+            role: "assistant",
+            content: `✓ Generated ${
+              data.visualizations?.length || 0
+            } visualization${
+              data.answer.visualizations?.length !== 1 ? "s" : ""
+            }!`,
           },
         ]);
       } else {

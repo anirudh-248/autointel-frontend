@@ -37,6 +37,7 @@ export interface DataSet {
     meta?: Record<string, unknown>;
   };
   id?: string;
+  indexId?: string;
 }
 
 export interface DataCleaningOptions {

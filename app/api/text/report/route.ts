@@ -1,153 +1,86 @@
-// app/api/text/report/route.ts
 import { NextRequest, NextResponse } from "next/server";
-import { ChatGoogleGenerativeAI } from "@langchain/google-genai";
-import { tool } from "@langchain/core/tools";
-import { createAgent } from "langchain";
-import { getVectorStore, getDebugInfo } from "@/lib/vector-store-manager";
-import { CohereEmbeddings } from "@langchain/cohere";
-import * as z from "zod";
+import {
+  VectorStoreIndex,
+  Settings,
+  storageContextFromDefaults,
+} from "llamaindex";
+import { PineconeVectorStore } from "llamaindex/vector-store/PineconeVectorStore";
+import { Pinecone } from "@pinecone-database/pinecone";
+import { OpenAI, OpenAIEmbedding } from "@llamaindex/openai";
 
-// Define the retrieval tool schema
-const retrieveSchema = z.object({
-  query: z.string(),
-});
+export async function POST(request: NextRequest) {
+  const body = await request.json();
+  const { query, indexId, topK, selectedVisualizations, config } = body;
+  // Initialize Pinecone client
+  const pinecone = new Pinecone({
+    apiKey: process.env.PINECONE_API_KEY!,
+  });
 
-interface ReportRequest {
-  datasetId: string;
-  query: string;
-  config?: {
-    apiKey?: string;
-    model?: string;
-  };
-  selectedVisualizations?: Array<{
-    id: string;
-    title: string;
-    description: string;
-    plotlyData: any[];
-    plotlyLayout: any;
-  }>;
-}
+  // Configure LlamaIndex settings
+  Settings.llm = new OpenAI({
+    apiKey: config.apiKey,
+    baseURL: "https://openrouter.ai/api/v1",
+    model: "openrouter/sherlock-dash-alpha", // Popular OpenRouter model
+    temperature: 0.1,
+    maxTokens: 512,
+  });
 
-export async function POST(req: NextRequest) {
+  Settings.embedModel = new OpenAIEmbedding({
+    apiKey: config.apiKey, // Can use same OpenRouter key
+    baseURL: "https://openrouter.ai/api/v1",
+    model: "openai/text-embedding-3-large",
+  });
+
   try {
-    const body: ReportRequest = await req.json();
-    const { datasetId, query, config, selectedVisualizations } = body;
-
-    console.log(
-      `[Report] Received request for datasetId: ${datasetId}, query: ${query.substring(
-        0,
-        50
-      )}...`
-    );
-
-    if (!datasetId || !query) {
+    // Validate input
+    if (!query || typeof query !== "string") {
       return NextResponse.json(
-        { error: "Missing required fields: datasetId and query" },
+        { error: "Query is required and must be a string" },
         { status: 400 }
       );
     }
 
-    if (!process.env.GOOGLE_API_KEY && !process.env.GOOGLE_GEMINI_API_KEY) {
-      throw new Error(
-        "GOOGLE_API_KEY or GOOGLE_GEMINI_API_KEY is not configured."
-      );
-    }
-
-    if (!process.env.COHERE_API_KEY) {
-      throw new Error("COHERE_API_KEY is not configured.");
-    }
-
-    const normalizedDatasetId = datasetId.trim();
-    console.log(
-      `[Report] Looking up vector store for datasetId: "${normalizedDatasetId}"`
-    );
-
-    // Initialize embeddings
-    const embeddings = new CohereEmbeddings({
-      apiKey: process.env.COHERE_API_KEY,
-      model: "embed-english-v3.0",
-    });
-
-    // Get vector store
-    const vectorStore = await getVectorStore(normalizedDatasetId, embeddings);
-
-    if (!vectorStore) {
-      const debugInfo = getDebugInfo();
-      console.error(
-        `[Report] Vector store not found for datasetId: "${normalizedDatasetId}"`
-      );
-
+    if (!indexId || typeof indexId !== "string") {
       return NextResponse.json(
-        {
-          error:
-            "Vector store not found for this dataset. Please index the document first.",
-          details: `Dataset ID: ${normalizedDatasetId}. Available: ${
-            debugInfo.datasetIds.join(", ") || "none"
-          }`,
-        },
-        { status: 404 }
+        { error: "Index ID is required and must be a string" },
+        { status: 400 }
       );
     }
 
-    console.log(`[Report] Vector store found, generating report...`);
+    if (!process.env.PINECONE_API_KEY) {
+      return NextResponse.json(
+        { error: "Pinecone API key not configured" },
+        { status: 500 }
+      );
+    }
 
-    // Create retrieval tool
-    const retrieve = tool(
-      async ({ query }) => {
-        console.log(`[Report] Retrieving documents for: ${query}`);
-        const retrievedDocs = await vectorStore.similaritySearch(query, 6);
-        console.log(`[Report] Retrieved ${retrievedDocs.length} documents`);
+    if (!process.env.PINECONE_INDEX_NAME) {
+      return NextResponse.json(
+        { error: "Pinecone index name not configured" },
+        { status: 500 }
+      );
+    }
 
-        const serialized = retrievedDocs
-          .map(
-            (doc, idx) =>
-              `[Document ${idx + 1}]\nSource: ${
-                doc.metadata.source || "Unknown"
-              }\nContent: ${doc.pageContent}\n---`
-          )
-          .join("\n\n");
-        return [serialized, retrievedDocs];
-      },
-      {
-        name: "retrieve",
-        description:
-          "Retrieve comprehensive information from the document for report generation.",
-        schema: retrieveSchema,
-        responseFormat: "content_and_artifact",
-      }
-    );
-
-    // Initialize chat model
-    const apiKey =
-      config?.apiKey ||
-      process.env.GOOGLE_API_KEY ||
-      process.env.GOOGLE_GEMINI_API_KEY;
-    const model = new ChatGoogleGenerativeAI({
-      model: config?.model || "gemini-2.5-flash-lite",
-      apiKey: apiKey!,
-      temperature: 0.5,
+    // Initialize Pinecone vector store with the specific namespace
+    const vectorStore = new PineconeVectorStore({
+      indexName: process.env.PINECONE_INDEX_NAME,
+      namespace: indexId,
     });
 
-    // Create tools array
-    const tools = [retrieve];
+    // Create storage context with vector store
+    const storageContext = await storageContextFromDefaults({
+      vectorStore,
+    });
 
-    // Build visualization context for the prompt if provided
-    const vizContext =
-      selectedVisualizations && selectedVisualizations.length > 0
-        ? `\n\nINCLUDE THESE VISUALIZATIONS IN THE REPORT:
-${selectedVisualizations
-  .map(
-    (viz, idx) => `
-${idx + 1}. ${viz.title}
-   Description: ${viz.description}
-   Chart ID: ${viz.id}
-`
-  )
-  .join("\n")}`
-        : "";
+    // Create index from existing vector store
+    const index = await VectorStoreIndex.fromVectorStore(vectorStore);
 
-    // System prompt
-    const systemPromptText = `You are a professional report writer. You have access to a retrieval tool that fetches information from documents.
+    // Create query engine with retriever configuration
+    const queryEngine = index.asQueryEngine({
+      similarityTopK: topK || 3, // Number of similar documents to retrieve
+    });
+
+    const systemPrompt = `You are a professional report writer. You have access to a retrieval tool that fetches information from documents.
 
 TASK: Generate a comprehensive HTML report based on the retrieved data.
 
@@ -161,7 +94,8 @@ REPORT STRUCTURE:
 7. **Recommendations** - Actionable suggestions based on findings
 8. **Conclusion** - Summary and final thoughts
 
-${vizContext}
+You must include the following visualizations in the report:
+${selectedVisualizations || "No visualizations selected."}
 
 CRITICAL CHART.JS REQUIREMENTS:
 - Load Chart.js from CDN: <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
@@ -216,58 +150,34 @@ STYLING:
 
 OUTPUT: Return ONLY the complete HTML (no markdown code blocks, just pure HTML starting with <!DOCTYPE html>).`;
 
-    // Create agent
-    const agent = createAgent({ model, tools, systemPrompt: systemPromptText });
-
-    // Prepare agent inputs
-    const agentInputs = {
-      messages: [{ role: "user", content: query }],
-    };
-
-    console.log(`[Report] Starting agent execution...`);
-
-    // Stream agent execution
-    const stream = await agent.stream(agentInputs, {
-      streamMode: "values",
+    // Execute query without any chat history
+    const response = await queryEngine.query({
+      query: systemPrompt + `\n\n` + query,
     });
 
-    let finalAnswer = "";
-
-    for await (const step of stream) {
-      const lastMessage = step.messages[step.messages.length - 1];
-
-      // Extract final answer from AI messages
-      if (
-        (lastMessage.role === "ai" || lastMessage._getType?.() === "ai") &&
-        typeof lastMessage.content === "string"
-      ) {
-        finalAnswer = lastMessage.content;
-      }
-    }
-
-    console.log(`[Report] Report generation complete`);
-
-    // Clean up the HTML if it has markdown code blocks
-    let cleanedHtml = finalAnswer
-      .replace(/```html\n?/g, "")
-      .replace(/```\n?/g, "")
-      .trim();
-
-    // Ensure it starts with DOCTYPE
-    if (!cleanedHtml.toLowerCase().startsWith("<!doctype")) {
-      console.warn(
-        "[Report] Response doesn't start with DOCTYPE, may not be valid HTML"
-      );
-    }
+    // Extract source nodes for transparency
+    // const sourceNodes =
+    //   response.sourceNodes?.map((node) => ({
+    //     text: node.node.getContent(), // ✅ Uses the proper method        score: node.score,
+    //     metadata: node.node.metadata,
+    //   })) || [];
 
     return NextResponse.json({
-      answer: cleanedHtml || "No report generated.",
+      success: true,
+      answer: response.response,
+      // sources: sourceNodes,
+      metadata: {
+        indexId: indexId,
+        query: query,
+        timestamp: new Date().toISOString(),
+        // retrievedNodes: sourceNodes.length,
+      },
     });
   } catch (error: any) {
-    console.error("[Report] Error:", error);
+    console.error("Error querying document:", error);
     return NextResponse.json(
       {
-        error: "Failed to generate report",
+        error: "Failed to query document",
         details: error.message,
       },
       { status: 500 }

@@ -141,34 +141,26 @@ export function TextPdfHandler({
         console.log(`[Upload] Text file read: ${text.length} characters`);
       }
 
-      setProgress(20);
-      setStatusMessage("Preparing dataset...");
+      setProgress(30);
+      setStatusMessage("Indexing document...");
 
-      // Step 2: Generate unique dataset ID
-      const datasetId = `${type}_${uuidv4()}`;
+      // Step 2: Generate unique namespace/indexId
+      const indexId = `${type}_${file.name}_${Date.now()}_${Math.random()
+        .toString(36)
+        .substr(2, 9)}`;
       const uploadedAt = new Date().toISOString();
 
-      console.log(`[Upload] Generated datasetId: ${datasetId}`);
+      console.log(`[Upload] Generated indexId: ${indexId}`);
 
-      setProgress(30);
-      setStatusMessage("Indexing document server-side...");
-
-      // Step 3: Index server-side (CRITICAL for analyze endpoint)
-      console.log(
-        `[Upload] Calling /api/text/index for datasetId: ${datasetId}`
-      );
+      // Step 3: Index document using our new API
+      console.log(`[Upload] Calling /api/index with indexId: ${indexId}`);
 
       const indexResponse = await fetch("/api/text/index", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
-          datasetId,
           text,
-          metadata: {
-            fileType: type,
-            source: file.name,
-            uploadedAt,
-          },
+          namespace: indexId,
         }),
       });
 
@@ -176,149 +168,17 @@ export function TextPdfHandler({
         const errorData = await indexResponse.json().catch(() => ({}));
         console.error("[Upload] Index failed:", errorData);
         throw new Error(
-          errorData?.details ||
-            errorData?.error ||
-            "Failed to index document server-side."
+          errorData?.details || errorData?.error || "Failed to index document"
         );
       }
 
       const indexResult = await indexResponse.json();
-      const { chunkCount, datasetId: returnedDatasetId } = indexResult;
-
       console.log(`[Upload] Indexing successful:`, indexResult);
-      console.log(`[Upload] Chunks created: ${chunkCount}`);
-      console.log(`[Upload] Returned datasetId: ${returnedDatasetId}`);
 
-      // Verify the returned datasetId matches
-      if (returnedDatasetId && returnedDatasetId !== datasetId) {
-        console.warn(
-          `[Upload] DatasetId mismatch: sent "${datasetId}", got "${returnedDatasetId}"`
-        );
-      }
+      setProgress(70);
+      setStatusMessage("Preparing dataset...");
 
-      // Step 4: Verify the vector store is accessible (with retry and longer delays)
-      setProgress(60);
-      setStatusMessage("Verifying vector store...");
-
-      let verified = false;
-      let verifyAttempts = 0;
-      const maxVerifyAttempts = 5;
-      const delays = [1000, 2000, 3000, 4000, 5000]; // Progressive delays
-
-      while (!verified && verifyAttempts < maxVerifyAttempts) {
-        verifyAttempts++;
-        console.log(
-          `[Upload] Verification attempt ${verifyAttempts}/${maxVerifyAttempts}`
-        );
-
-        // Progressive delay to allow Pinecone propagation
-        const delay = delays[verifyAttempts - 1] || 5000;
-        setStatusMessage(
-          `Verifying vector store (attempt ${verifyAttempts}/${maxVerifyAttempts})...`
-        );
-        await new Promise((resolve) => setTimeout(resolve, delay));
-
-        try {
-          const verifyResponse = await fetch(
-            `/api/text/verify?datasetId=${encodeURIComponent(
-              datasetId
-            )}&testRetrieval=true`
-          );
-
-          if (verifyResponse.ok) {
-            const verifyData = await verifyResponse.json();
-            console.log(`[Upload] Verify response:`, verifyData);
-
-            // Check both existence and retrieval test
-            if (verifyData.exists && verifyData.retrievalTest?.success) {
-              verified = true;
-              console.log(
-                `✓ [Upload] Vector store verified and retrieval tested successfully`
-              );
-            } else if (verifyData.exists) {
-              console.warn(
-                `⚠️ [Upload] Vector store exists but retrieval test failed (attempt ${verifyAttempts})`
-              );
-            } else {
-              console.warn(
-                `⚠️ [Upload] Vector store not found (attempt ${verifyAttempts})`
-              );
-              console.log(
-                `[Upload] Available datasets:`,
-                verifyData.allIndexedDatasets
-              );
-            }
-          }
-        } catch (verifyError: any) {
-          console.warn(
-            `[Upload] Verification attempt ${verifyAttempts} failed:`,
-            verifyError.message
-          );
-        }
-
-        // Update progress
-        setProgress(60 + (verifyAttempts / maxVerifyAttempts) * 15);
-      }
-
-      // Don't fail if verification doesn't pass - just warn
-      if (!verified) {
-        console.warn(
-          `⚠️ [Upload] Vector store verification incomplete after ${maxVerifyAttempts} attempts. ` +
-            `This may be due to Pinecone propagation delay. The dataset is indexed and should work shortly.`
-        );
-        setStatusMessage("Dataset indexed (verification pending)...");
-        // Don't throw - continue with dataset creation
-      } else {
-        setStatusMessage("Vector store verified!");
-      }
-
-      // Step 5: Optional analysis test (only if verified)
-      if (verified) {
-        setProgress(78);
-        setStatusMessage("Testing analysis endpoint...");
-
-        try {
-          console.log(
-            `[Upload] Testing analyze endpoint with datasetId: ${datasetId}`
-          );
-
-          const testResponse = await fetch("/api/text/analyze", {
-            method: "POST",
-            headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({
-              datasetId,
-              query: "What is this document about? Provide a brief summary.",
-              config: {
-                model: "gemini-2.5-flash-lite",
-              },
-            }),
-          });
-
-          if (testResponse.ok) {
-            const testData = await testResponse.json();
-            console.log(`✓ [Upload] Analysis endpoint test successful`);
-            console.log(
-              `[Upload] Test response:`,
-              testData.answer?.substring(0, 100) + "..."
-            );
-          } else {
-            const testError = await testResponse.json();
-            console.warn(
-              `⚠️ [Upload] Analysis endpoint test failed:`,
-              testError
-            );
-          }
-        } catch (testError: any) {
-          console.warn(`⚠️ [Upload] Analysis test error:`, testError);
-        }
-      } else {
-        console.log(`[Upload] Skipping analysis test - verification pending`);
-      }
-
-      setProgress(85);
-      setStatusMessage("Creating dataset...");
-
-      // Step 6: Create dataset for display
+      // Step 4: Create dataset for display
       const lines = text.split("\n").filter((l) => l.trim());
       const rows = lines.slice(0, 100).map((line, i) => ({
         line_number: i + 1,
@@ -338,27 +198,26 @@ export function TextPdfHandler({
           kind: type,
           name: file.name,
           meta: {
-            datasetId,
-            chunkCount: chunkCount ?? 0,
             indexed: true,
             indexedAt: uploadedAt,
             uploadedAt,
             totalLines: lines.length,
+            textLength: text.length,
           },
         },
-        id: datasetId,
+        indexId: indexResult.indexId,
+        id: indexId, // Use the returned indexId as dataset id
       };
 
       setProgress(100);
       setStatusMessage("Complete!");
 
       console.log(`✓ [Upload] Dataset created successfully:`, {
-        id: datasetId,
+        id: indexResult.indexId,
         type,
         fileName: file.name,
         lines: lines.length,
-        chunks: chunkCount,
-        verified,
+        textLength: text.length,
       });
 
       // Show success message
@@ -367,14 +226,6 @@ export function TextPdfHandler({
         setProcessing(false);
         setProgress(0);
         setStatusMessage("");
-
-        // Optional: Show info toast about potential delay
-        if (!verified) {
-          console.info(
-            `ℹ️ [Upload] Dataset indexed successfully but verification is pending. ` +
-              `This is normal with Pinecone. The dataset should be ready in a few seconds.`
-          );
-        }
       }, 500);
     } catch (err: any) {
       console.error("[Upload] File processing error:", err);

@@ -1,140 +1,87 @@
 import { NextRequest, NextResponse } from "next/server";
-import { CohereEmbeddings } from "@langchain/cohere";
-import { PineconeStore } from "@langchain/pinecone";
+import {
+  VectorStoreIndex,
+  Settings,
+  storageContextFromDefaults,
+} from "llamaindex";
+import { PineconeVectorStore } from "llamaindex/vector-store/PineconeVectorStore";
 import { Pinecone } from "@pinecone-database/pinecone";
-import { ChatGoogleGenerativeAI } from "@langchain/google-genai";
-import { tool } from "@langchain/core/tools";
-import { createReactAgent } from "@langchain/langgraph/prebuilt";
-import { HumanMessage, SystemMessage } from "@langchain/core/messages";
-import * as z from "zod";
+import { OpenAI, OpenAIEmbedding } from "@llamaindex/openai";
 
-// Define the retrieval tool schema
-const retrieveSchema = z.object({
-  query: z.string().describe("The search query to find relevant information"),
-});
+export async function POST(request: NextRequest) {
+  const body = await request.json();
+  const { query, indexId, topK, config } = body;
+  // Initialize Pinecone client
+  const pinecone = new Pinecone({
+    apiKey: process.env.PINECONE_API_KEY!,
+  });
 
-interface AnalyzeRequest {
-  datasetId: string;
-  query: string;
-  config?: {
-    apiKey?: string;
-    model?: string;
-  };
-}
+  // Configure LlamaIndex settings
+  Settings.llm = new OpenAI({
+    apiKey: config.apiKey,
+    baseURL: "https://openrouter.ai/api/v1",
+    model: "openrouter/sherlock-dash-alpha", // Popular OpenRouter model
+    temperature: 0.1,
+    maxTokens: 512,
+  });
 
-export async function POST(req: NextRequest) {
+  Settings.embedModel = new OpenAIEmbedding({
+    apiKey: config.apiKey, // Can use same OpenRouter key
+    baseURL: "https://openrouter.ai/api/v1",
+    model: "openai/text-embedding-3-large",
+  });
   try {
-    const body: AnalyzeRequest = await req.json();
-    const { datasetId, query, config } = body;
-
-    if (!datasetId || !query) {
+    // Validate input
+    if (!query || typeof query !== "string") {
       return NextResponse.json(
-        { error: "Missing required fields: datasetId and query" },
+        { error: "Query is required and must be a string" },
         { status: 400 }
       );
     }
 
-    // Initialize Pinecone
-    const pinecone = new Pinecone({
-      apiKey: process.env.PINECONE_API_KEY!,
-    });
-
-    const pineconeIndex = pinecone.Index(
-      process.env.PINECONE_INDEX_NAME || "datasets"
-    );
-
-    // Initialize embeddings
-    const embeddings = new CohereEmbeddings({
-      apiKey: process.env.COHERE_API_KEY!,
-      model: "embed-english-v3.0",
-    });
-
-    // Get vector store for this specific dataset (using namespace)
-    const vectorStore = await PineconeStore.fromExistingIndex(embeddings, {
-      pineconeIndex,
-      namespace: datasetId,
-      maxConcurrency: 5,
-    });
-
-    // Create retrieval tool
-    const retrieve = tool(
-      async ({ query }) => {
-        try {
-          const retrievedDocs = await vectorStore.similaritySearch(query, 4);
-
-          if (retrievedDocs.length === 0) {
-            return ["No relevant information found.", []];
-          }
-
-          const serialized = retrievedDocs
-            .map(
-              (doc, idx) =>
-                `[Document ${idx + 1}]\n` +
-                `Source: ${doc.metadata.source || "Unknown"}\n` +
-                `Content: ${doc.pageContent}\n` +
-                `---`
-            )
-            .join("\n\n");
-
-          return [serialized, retrievedDocs];
-        } catch (error) {
-          console.error("Retrieval error:", error);
-          return ["Error retrieving documents.", []];
-        }
-      },
-      {
-        name: "retrieve",
-        description: "Retrieve information related to a query.",
-        schema: retrieveSchema,
-        responseFormat: "content_and_artifact",
-      }
-    );
-
-    const model = new ChatGoogleGenerativeAI({
-      model: "gemini-2.5-flash-lite",
-      apiKey: process.env.GOOGLE_GEMINI_API_KEY!,
-    });
-
-    // Create tools array
-    const tools = [retrieve];
-
-    // System prompt
-    const systemPrompt = new SystemMessage(
-      `You are a data visualization expert. Analyze this dataset and suggest 4 diverse visualizations using Plotly.
-      Create 6-10 diverse visualizations (bar, line, scatter, pie, box, histogram, etc.) that best represent the data patterns.
-
-Respond with a JSON array of visualization specs. Each spec should have:
-{
-  "id": "unique-id",
-  "title": "Chart Title",
-  "description": "What this chart shows",
-  "plotlyData": [
-    {
-      "x": [...],
-      "y": [...],
-      "type": "bar|scatter|line|pie|box|histogram|heatmap",
-      "mode": "lines|markers|lines+markers",
-      "name": "Series Name",
-      "marker": { "color": "blue" }
+    if (!indexId || typeof indexId !== "string") {
+      return NextResponse.json(
+        { error: "Index ID is required and must be a string" },
+        { status: 400 }
+      );
     }
-  ],
-  "plotlyLayout": {
-    "xaxis": { "title": "X Axis Label" },
-    "yaxis": { "title": "Y Axis Label" },
-    "title": "Chart Title"
-  }
-}
 
-IMPORTANT: 
-- Include actual data values in the plotlyData arrays, not empty arrays
-- Use the actual column names from the schema
-- Choose appropriate chart types for the data
-- For categorical data, use bar or pie charts
-- For time series, use line charts
-- For distributions, use histograms or box plots
-- Keep the data arrays reasonable (sample if needed)
+    if (!process.env.PINECONE_API_KEY) {
+      return NextResponse.json(
+        { error: "Pinecone API key not configured" },
+        { status: 500 }
+      );
+    }
 
-Return ONLY a JSON array, no markdown formatting.Your task is to:
+    if (!process.env.PINECONE_INDEX_NAME) {
+      return NextResponse.json(
+        { error: "Pinecone index name not configured" },
+        { status: 500 }
+      );
+    }
+
+    // Initialize Pinecone vector store with the specific namespace
+    const vectorStore = new PineconeVectorStore({
+      indexName: process.env.PINECONE_INDEX_NAME,
+      namespace: indexId,
+    });
+
+    // Create storage context with vector store
+    const storageContext = await storageContextFromDefaults({
+      vectorStore,
+    });
+
+    // Create index from existing vector store
+    const index = await VectorStoreIndex.fromVectorStore(vectorStore);
+
+    // Create query engine with retriever configuration
+    const queryEngine = index.asQueryEngine({
+      similarityTopK: topK || 3, // Number of similar documents to retrieve
+    });
+
+    const systemPrompt = `You are a data analysis assistant. You have access to a dataset with the following schema:
+
+Your task is to:
 1. Answer the user's query based on the data
 2. Suggest relevant visualizations using Plotly specification, only if the user has asked for it in the query.
 3. Provide follow-up questions
@@ -165,70 +112,36 @@ Respond in JSON format:
     }
   ],
   "followUps": ["Question 1?", "Question 2?"]
-}`
-    );
+}`;
 
-    // Create agent
-    const agent = createReactAgent({
-      llm: model,
-      tools,
+    // Execute query without any chat history
+    const response = await queryEngine.query({
+      query: systemPrompt + `\n\n` + query,
     });
 
-    // Prepare agent inputs
-    const agentInputs = {
-      messages: [systemPrompt, new HumanMessage(query)],
-    };
-
-    // Stream agent execution
-    const stream = await agent.stream(agentInputs, {
-      streamMode: "values",
-    });
-
-    let finalAnswer = "";
-    let retrievedSources: string[] = [];
-    const conversationLog: Array<{ role: string; content: string }> = [];
-
-    for await (const step of stream) {
-      const lastMessage = step.messages[step.messages.length - 1];
-
-      // Log the conversation
-      conversationLog.push({
-        role: lastMessage._getType(),
-        content:
-          typeof lastMessage.content === "string"
-            ? lastMessage.content
-            : JSON.stringify(lastMessage.content),
-      });
-
-      console.log(`[${lastMessage._getType()}]: ${lastMessage.content}`);
-      console.log("-----\n");
-
-      // Extract final answer from AI messages
-      if (
-        lastMessage._getType() === "ai" &&
-        typeof lastMessage.content === "string"
-      ) {
-        finalAnswer = lastMessage.content;
-      }
-
-      // Track sources from tool calls
-      //   if (lastMessage.tool_calls && Array.isArray(lastMessage.tool_calls)) {
-      //     retrievedSources.push(
-      //       ...lastMessage.tool_calls.map((tc: any) => tc.args?.query || "")
-      //     );
-      //   }
-    }
+    // Extract source nodes for transparency
+    // const sourceNodes =
+    //   response.sourceNodes?.map((node) => ({
+    //     text: node.node.getContent(), // ✅ Uses the proper method        score: node.score,
+    //     metadata: node.node.metadata,
+    //   })) || [];
 
     return NextResponse.json({
-      answer: finalAnswer || "No answer generated.",
-      sources: retrievedSources.filter(Boolean),
-      conversationLog,
+      success: true,
+      answer: response.response,
+      // sources: sourceNodes,
+      metadata: {
+        indexId: indexId,
+        query: query,
+        timestamp: new Date().toISOString(),
+        // retrievedNodes: sourceNodes.length,
+      },
     });
   } catch (error: any) {
-    console.error("Text analysis error:", error);
+    console.error("Error querying document:", error);
     return NextResponse.json(
       {
-        error: "Failed to analyze text",
+        error: "Failed to query document",
         details: error.message,
       },
       { status: 500 }
