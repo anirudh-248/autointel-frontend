@@ -49,7 +49,6 @@ export class OpenAIChatLLM extends BaseLLM {
       topP: this.topP,
       contextWindow: DEFAULT_CONTEXT_WINDOW,
       tokenizer: undefined,
-      structuredOutput: false,
     };
   }
 
@@ -63,10 +62,10 @@ export class OpenAIChatLLM extends BaseLLM {
     params:
       | LLMChatParamsStreaming<object, object>
       | LLMChatParamsNonStreaming<object, object>
-  ): Promise<
-    AsyncIterable<ChatResponseChunk<object>> | ChatResponse<object>
-  > {
-    const messages = params.messages.map((message) => this.toOpenAIMessage(message));
+  ): Promise<AsyncIterable<ChatResponseChunk<object>> | ChatResponse<object>> {
+    const messages = params.messages.map((message) =>
+      this.toOpenAIMessage(message)
+    );
 
     if (params.stream) {
       const stream = await this.client.chat.completions.create({
@@ -126,7 +125,6 @@ export class OpenAIChatLLM extends BaseLLM {
       case "user":
         return role;
       case "memory":
-      case "developer":
         return "system";
       default:
         return "user";
@@ -178,7 +176,8 @@ export async function buildMongoIndex(
     const db = client.db(dbName);
 
     const collections = await db.listCollections().toArray();
-    if (!collections.length) throw new Error("No collections found in database");
+    if (!collections.length)
+      throw new Error("No collections found in database");
 
     const allDocs: Document[] = [];
 
@@ -187,7 +186,9 @@ export async function buildMongoIndex(
       const documents = await col.find({}).limit(100).toArray();
 
       for (const rawDoc of documents) {
-        const id = `${collection.name}_${rawDoc._id?.toString?.() ?? rawDoc._id}`;
+        const id = `${collection.name}_${
+          rawDoc._id?.toString?.() ?? rawDoc._id
+        }`;
         const serialized = JSON.stringify(rawDoc, (_, value) => {
           if (
             value &&
@@ -219,7 +220,9 @@ export async function buildMongoIndex(
     if (!allDocs.length) throw new Error("No documents found in collections");
 
     const storageContext = await storageContextFromDefaults({});
-    const index = await VectorStoreIndex.fromDocuments(allDocs, { storageContext });
+    const index = await VectorStoreIndex.fromDocuments(allDocs, {
+      storageContext,
+    });
 
     indexCache.set(connectionString, index);
     return index;
@@ -236,4 +239,3 @@ export async function queryMongoData(
   const response = await queryEngine.query({ query });
   return response.toString();
 }
-
