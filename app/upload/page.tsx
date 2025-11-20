@@ -351,6 +351,63 @@ export default function UploadPage() {
     loadUserInfo();
   };
 
+  const maskUri = (uri: string) => {
+    try {
+      const url = new URL(uri);
+
+      let maskedAuth = "";
+      if (url.username) {
+        const maskedUser =
+          url.username.length > 2
+            ? url.username.slice(0, 2) +
+              "*".repeat(Math.min(url.username.length - 2, 5))
+            : "***";
+        const maskedPass = url.password ? ":***" : "";
+        maskedAuth = `${maskedUser}${maskedPass}@`;
+      }
+
+      const host = url.hostname;
+      const hostParts = host.split(".");
+      let maskedHost;
+
+      if (hostParts.length > 2) {
+        const domain = hostParts.slice(-2).join(".");
+        const subdomain = hostParts.slice(0, -2).join(".");
+        maskedHost = "*".repeat(Math.min(subdomain.length, 3)) + "." + domain;
+      } else if (hostParts.length === 2) {
+        maskedHost = host.length > 6 ? "*".repeat(3) + host.slice(3) : host;
+      } else {
+        maskedHost =
+          host.length > 4
+            ? "*".repeat(host.length - 3) + host.slice(-3)
+            : "***";
+      }
+
+      const port = url.port ? `:${url.port}` : "";
+      const path =
+        url.pathname && url.pathname !== "/"
+          ? "/" +
+            url.pathname
+              .split("/")
+              .map((part) =>
+                part
+                  ? part.length > 3
+                    ? part.slice(0, 2) +
+                      "*".repeat(Math.min(part.length - 2, 3))
+                    : "***"
+                  : ""
+              )
+              .join("/")
+          : "";
+
+      return `${url.protocol}//${maskedAuth}${maskedHost}${port}${path}`;
+    } catch {
+      return uri.length > 15
+        ? uri.substring(0, 10) + "***" + uri.substring(uri.length - 5)
+        : "***";
+    }
+  };
+
   const loadExistingConnection = async (
     dbType: string,
     connectionString: string
@@ -1120,7 +1177,7 @@ export default function UploadPage() {
                   <h2 className="text-xl font-semibold">Dataset View</h2>
                   <p className="text-sm text-muted-foreground">
                     {isSQLSource
-                      ? `${dbType.toUpperCase()} Database: ${dburi}`
+                      ? `${dbType.toUpperCase()} Database: ${maskUri(dburi)}`
                       : `${dataset.schema.rowCount} rows × ${dataset.schema.fields.length} columns`}
                   </p>
                 </div>
