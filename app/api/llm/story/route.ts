@@ -163,7 +163,7 @@ Make speaker notes engaging and suitable for text-to-speech. Keep them under 100
           "X-Title": config.title || "Data Analysis App",
         },
         body: JSON.stringify({
-          model: config.model || "openai/gpt-oss-20b:free",
+          model: config.model || "x-ai/grok-4.1-fast",
           messages,
           temperature: 0.8,
         }),

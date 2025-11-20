@@ -920,7 +920,7 @@ export default function UploadPage() {
     }
   };
 
-  const generateStory = async (query?: string) => {
+  const generateStory = async (query?: string, language: string = "en") => {
     setStoryLoading(true);
     try {
       const selectedVizContext = visualizations
@@ -965,6 +965,7 @@ export default function UploadPage() {
           selectedVisualizations: selectedVizContext,
           selectedReports: selectedReportContext,
           config,
+          language,
           reportContext: query || "Generate a compelling data story",
         }),
       });
@@ -1208,7 +1209,7 @@ export default function UploadPage() {
               onInputChange={setInput}
               onSendMessage={sendMessage}
               onDownloadReport={handleDownloadReport}
-              onGenerateStory={() => generateStory()}
+              onGenerateStory={(language) => generateStory(undefined, language)}
               onToggleReportSelection={toggleReportSelection}
               selectedReportIds={selectedReportIds}
             />

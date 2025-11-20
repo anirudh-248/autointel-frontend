@@ -16,8 +16,7 @@ export type LLMClientConfig = Required<
 
 const OPENROUTER_BASE_URL =
   process.env.OPENROUTER_BASE_URL || "https://openrouter.ai/api/v1";
-const OPENROUTER_MODEL =
-  process.env.OPENROUTER_MODEL || "openai/gpt-oss-20b:free";
+const OPENROUTER_MODEL = process.env.OPENROUTER_MODEL || "x-ai/grok-4.1-fast";
 const OPENROUTER_EMBED_MODEL =
   process.env.OPENROUTER_EMBED_MODEL || "openai/text-embedding-3-large";
 
