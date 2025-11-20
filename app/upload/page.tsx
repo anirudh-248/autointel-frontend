@@ -977,7 +977,7 @@ export default function UploadPage() {
     }
   };
 
-  const generateStory = async (query?: string, language: string = "en") => {
+  const generateStory = async (query?: string, language?: string) => {
     setStoryLoading(true);
     try {
       const selectedVizContext = visualizations
@@ -1013,6 +1013,79 @@ export default function UploadPage() {
         ]);
         return;
       }
+      // Generate images for all selected visualizations
+      setMessages((prev) => [
+        ...prev,
+        {
+          role: "assistant",
+          content: `🖼️ Preparing ${selectedVizContext.length} visualization images...`,
+        },
+      ]);
+
+      const visualizationImages: Record<string, string> = {};
+      const Plotly = await import("plotly.js-dist-min");
+
+      for (let i = 0; i < selectedVizContext.length; i++) {
+        const viz = selectedVizContext[i];
+        try {
+          // Create temporary container
+          const tempDiv = document.createElement("div");
+          tempDiv.style.width = "1200px";
+          tempDiv.style.height = "600px";
+          tempDiv.style.position = "absolute";
+          tempDiv.style.left = "-9999px";
+          document.body.appendChild(tempDiv);
+
+          // Configure layout for image export
+          const imageLayout = {
+            ...viz.plotlyLayout,
+            width: 1200,
+            height: 600,
+            paper_bgcolor: "white",
+            plot_bgcolor: "white",
+            font: {
+              size: 14,
+              family: "Arial, sans-serif",
+            },
+          };
+
+          // Create the plot
+          await Plotly.default.newPlot(tempDiv, viz.plotlyData, imageLayout, {
+            staticPlot: true,
+            displayModeBar: false,
+          });
+
+          // Convert to image
+          const imageDataUrl = await Plotly.default.toImage(tempDiv, {
+            format: "png",
+            width: 1200,
+            height: 600,
+            scale: 2,
+          });
+
+          // Clean up
+          Plotly.default.purge(tempDiv);
+          document.body.removeChild(tempDiv);
+
+          // Extract base64 from data URL
+          const base64 = imageDataUrl.split(",")[1];
+          visualizationImages[viz.id] = base64;
+
+          console.log(`✓ Generated image for: ${viz.title}`);
+        } catch (err) {
+          console.error(`Failed to generate image for ${viz.title}:`, err);
+        }
+      }
+
+      setMessages((prev) => [
+        ...prev,
+        {
+          role: "assistant",
+          content: `✓ Generated ${
+            Object.keys(visualizationImages).length
+          } images. Creating story...`,
+        },
+      ]);
 
       const response = await fetch("/api/llm/story", {
         method: "POST",
@@ -1023,6 +1096,7 @@ export default function UploadPage() {
           selectedReports: selectedReportContext,
           config,
           language,
+          visualizationImages,
           reportContext: query || "Generate a compelling data story",
         }),
       });

@@ -61,7 +61,8 @@ export async function POST(request: NextRequest) {
       selectedReports,
       config,
       reportContext,
-      language = "en", // Default to English
+      language,
+      visualizationImages,
     } = await request.json();
 
     if (!config?.apiKey) {
@@ -234,7 +235,8 @@ Make speaker notes engaging and suitable for text-to-speech. Keep them under 100
     const pptxData = await createPowerPoint(
       storyData,
       selectedVisualizations || [],
-      selectedReports || []
+      selectedReports || [],
+      visualizationImages || {}
     );
 
     return NextResponse.json({
@@ -345,7 +347,8 @@ async function generateSarvamTTS(
 async function createPowerPoint(
   storyData: any,
   visualizations: any[],
-  reports: any[]
+  reports: any[],
+  visualizationImages: Record<string, string> = {}
 ): Promise<string> {
   const pptx = new pptxgen();
 
@@ -442,17 +445,29 @@ async function createPowerPoint(
         });
       }
 
-      // Right side: Visualization chart
-      try {
-        await addChartToSlide(slide, viz, pptx, {
-          x: 5.2,
-          y: 1.0,
-          w: 4.5,
-          h: 4.5,
-        });
-        console.log(`✓ Added visualization to slide: ${viz.title}`);
-      } catch (err) {
-        console.error("Failed to add chart:", err);
+      // Right side: Visualization image
+      const vizImage = visualizationImages[viz.id];
+      if (vizImage) {
+        try {
+          slide.addImage({
+            data: `data:image/png;base64,${vizImage}`,
+            x: 5.2,
+            y: 1.0,
+            w: 4.5,
+            h: 4.5,
+          });
+          console.log(`✓ Added visualization image to slide: ${viz.title}`);
+        } catch (err) {
+          console.error("Failed to add visualization image:", err);
+          addChartPlaceholder(slide, viz, pptx, {
+            x: 5.2,
+            y: 1.0,
+            w: 4.5,
+            h: 4.5,
+          });
+        }
+      } else {
+        console.warn(`No image found for visualization: ${viz.id}`);
         addChartPlaceholder(slide, viz, pptx, {
           x: 5.2,
           y: 1.0,
