@@ -82,7 +82,7 @@ Respond in JSON format:
           "Content-Type": "application/json",
         },
         body: JSON.stringify({
-          model: config.model || "x-ai/grok-4.1-fast",
+          model: config.model || "openai/gpt-oss-20b:free",
           messages: [
             { role: "system", content: systemPrompt },
             { role: "user", content: query },
