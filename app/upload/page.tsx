@@ -24,6 +24,8 @@ import {
 import { PreviewTable } from "@/components/upload/PreviewTable";
 import MongoOverview from "@/components/upload/MongoOverview";
 import { getUserInfo } from "@/lib/api";
+import { useAuth } from "@/app/context/AuthContext";
+import { useRouter } from "next/navigation";
 
 import { ApiKeyConfig } from "@/components/upload/APIKeyConfig";
 import { AdSenseBanner } from "@/components/upload/AdSenseBanner";
@@ -39,6 +41,8 @@ import StoryPresenter from "@/components/upload/StoryPresenter";
 import { connection } from "next/server";
 
 export default function UploadPage() {
+  const { isLoggedIn } = useAuth();
+  const router = useRouter();
   const [source, setSource] = useState<DataSourceType>("csv");
   const [dataset, setDataset] = useState<DataSet | null>(null);
   const [dburi, setDburi] = useState<string>("");
@@ -46,6 +50,7 @@ export default function UploadPage() {
   const [originalDataset, setOriginalDataset] = useState<DataSet | null>(null);
   const [error, setError] = useState<string>("");
   const [openRouterKey, setOpenRouterKey] = useState<string>("");
+  const [modelName, setModelName] = useState<string>("");
   const [showAdSenseBanner, setShowAdSenseBanner] = useState(false);
 
   // SQL-specific states
@@ -92,10 +97,27 @@ export default function UploadPage() {
   const sqlOps = useSQLOperations(dbType);
   const { downloadReport, downloadLoading } = useReportDownload();
 
+  // Redirect to login if not authenticated
+  useEffect(() => {
+    if (!isLoggedIn) {
+      router.push("/login");
+    }
+  }, [isLoggedIn, router]);
+
   useEffect(() => {
     try {
       const saved = localStorage.getItem("OPENROUTER_API_KEY");
       if (saved) setOpenRouterKey(saved);
+
+      const savedModel = localStorage.getItem("OPENROUTER_MODEL_NAME");
+      if (savedModel) {
+        setModelName(savedModel);
+      } else {
+        // Set default from env
+        setModelName(
+          process.env.NEXT_PUBLIC_OPENROUTER_MODEL || "x-ai/grok-4-fast"
+        );
+      }
     } catch {}
 
     loadUserInfo();
@@ -197,7 +219,10 @@ export default function UploadPage() {
 
   const config: OpenRouterConfig = {
     apiKey: openRouterKey || process.env.NEXT_PUBLIC_OPENROUTER_API_KEY || "",
-    model: process.env.NEXT_PUBLIC_OPENROUTER_MODEL,
+    model:
+      modelName ||
+      process.env.NEXT_PUBLIC_OPENROUTER_MODEL ||
+      "x-ai/grok-4-fast",
     referer: process.env.NEXT_PUBLIC_OPENROUTER_REFERER,
     title: process.env.NEXT_PUBLIC_OPENROUTER_TITLE,
   };
@@ -284,12 +309,16 @@ export default function UploadPage() {
   const saveApiKey = () => {
     try {
       localStorage.setItem("OPENROUTER_API_KEY", openRouterKey);
+      localStorage.setItem("OPENROUTER_MODEL_NAME", modelName);
       setError("");
       setMessages([
-        { role: "assistant", content: "✓ API key saved successfully!" },
+        {
+          role: "assistant",
+          content: `✓ API configuration saved successfully! Using model: ${modelName}`,
+        },
       ]);
     } catch {
-      setError("Failed to save API key");
+      setError("Failed to save API configuration");
     }
   };
 
@@ -1129,6 +1158,11 @@ export default function UploadPage() {
 
   const isSQLSource = ["postgresql", "sqlite", "mysql"].includes(dbType);
 
+  // Show nothing while checking authentication
+  if (!isLoggedIn) {
+    return null;
+  }
+
   return (
     <div className="container mx-auto px-4 md:px-16 py-8 md:pt-24">
       {/* Story Presenter Modal */}
@@ -1156,7 +1190,9 @@ export default function UploadPage() {
       <div className="mb-6">
         <ApiKeyConfig
           apiKey={openRouterKey}
+          modelName={modelName}
           onApiKeyChange={setOpenRouterKey}
+          onModelNameChange={setModelName}
           onSave={saveApiKey}
         />
       </div>

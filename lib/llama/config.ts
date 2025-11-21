@@ -11,6 +11,15 @@ export function applyLlamaSettings(
   llmConfig: LLMClientConfig,
   options?: ApplyOptions
 ) {
+  console.log("Applying Llama settings:", {
+    hasApiKey: !!llmConfig.apiKey,
+    apiKeyPrefix: llmConfig.apiKey?.substring(0, 15) + "...",
+    baseURL: llmConfig.baseURL,
+    model: llmConfig.model,
+    embeddingModel: llmConfig.embeddingModel,
+    embeddingDimensions: llmConfig.embeddingDimensions,
+  });
+
   (Settings as any).llm = new OpenAI({
     apiKey: llmConfig.apiKey,
     baseURL: llmConfig.baseURL,
@@ -23,6 +32,13 @@ export function applyLlamaSettings(
     baseURL: llmConfig.baseURL,
     model: llmConfig.embeddingModel,
     dimensions: llmConfig.embeddingDimensions,
+    additionalSessionOptions: {
+      defaultHeaders: {
+        "HTTP-Referer":
+          process.env.NEXT_PUBLIC_BASE_URL || "https://autointel.cloud",
+        "X-Title": "AutoIntel Data Analysis Platform",
+      },
+    },
   });
 
   if (typeof options?.chunkSize === "number") {
@@ -33,4 +49,3 @@ export function applyLlamaSettings(
     Settings.chunkOverlap = options.chunkOverlap;
   }
 }
-
