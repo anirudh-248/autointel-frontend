@@ -25,14 +25,19 @@ export async function POST(req: NextRequest) {
   let readStream: Readable | null = null;
 
   try {
+    console.log("PDF extraction request received");
     const formData = await req.formData();
     const file = formData.get("file") as File;
 
     if (!file) {
+      console.error("No file provided in request");
       return NextResponse.json({ error: "No file provided" }, { status: 400 });
     }
 
+    console.log(`Processing PDF file: ${file.name}, size: ${file.size} bytes`);
+
     if (!file.type.includes("pdf") && !file.name.endsWith(".pdf")) {
+      console.error(`Invalid file type: ${file.type}`);
       return NextResponse.json(
         { error: "File must be a PDF" },
         { status: 400 }
@@ -44,6 +49,7 @@ export async function POST(req: NextRequest) {
       !process.env.PDF_SERVICES_CLIENT_ID ||
       !process.env.PDF_SERVICES_CLIENT_SECRET
     ) {
+      console.error("Adobe PDF Services credentials not configured");
       return NextResponse.json(
         {
           error: "Adobe PDF Services credentials not configured",
@@ -54,59 +60,76 @@ export async function POST(req: NextRequest) {
       );
     }
 
+    console.log("Adobe credentials found, proceeding with extraction");
+
     // Convert File to buffer and save temporarily
+    console.log("Converting file to buffer...");
     const arrayBuffer = await file.arrayBuffer();
     const buffer = Buffer.from(arrayBuffer);
+    console.log(`Buffer created: ${buffer.length} bytes`);
 
     // Create temporary file for Adobe PDF Services
     tempFilePath = join(
       tmpdir(),
       `pdf-${Date.now()}-${Math.random().toString(36).substring(7)}.pdf`
     );
+    console.log(`Writing to temp file: ${tempFilePath}`);
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     writeFileSync(tempFilePath, buffer as any);
 
     // Create read stream from temporary file
+    console.log("Creating read stream...");
     readStream = createReadStream(tempFilePath) as any;
 
     // Initial setup, create credentials instance
+    console.log("Creating Adobe credentials...");
     const credentials = new ServicePrincipalCredentials({
       clientId: process.env.PDF_SERVICES_CLIENT_ID,
       clientSecret: process.env.PDF_SERVICES_CLIENT_SECRET,
     });
 
     // Creates a PDF Services instance
+    console.log("Initializing PDF Services...");
     const pdfServices = new PDFServices({ credentials });
 
     // Creates an asset from source file and upload
     if (!readStream) {
       throw new Error("Failed to create read stream");
     }
+    console.log("Uploading PDF to Adobe services...");
     const inputAsset = await pdfServices.upload({
       readStream: readStream as any,
       mimeType: MimeType.PDF,
     });
+    console.log("PDF uploaded successfully");
 
     // Create parameters for the job
+    console.log("Creating extraction parameters...");
     const params = new ExtractPDFParams({
       elementsToExtract: [ExtractElementType.TEXT],
     });
 
     // Creates a new job instance
+    console.log("Creating extraction job...");
     const job = new ExtractPDFJob({ inputAsset, params });
 
     // Submit the job and get the job result
+    console.log("Submitting job to Adobe...");
     const pollingURL = await pdfServices.submit({ job });
+    console.log("Job submitted, waiting for result...");
     const pdfServicesResponse = await pdfServices.getJobResult({
       pollingURL,
       resultType: ExtractPDFResult,
     });
+
+    console.log("Job completed, retrieving result...");
 
     // Get content from the resulting asset
     if (!pdfServicesResponse.result?.resource) {
       throw new Error("PDF extraction result is null");
     }
     const resultAsset = pdfServicesResponse.result.resource;
+    console.log("Downloading result asset...");
     const streamAsset = await pdfServices.getContent({ asset: resultAsset });
 
     // Save the ZIP file temporarily

@@ -115,7 +115,7 @@ Return ONLY the HTML content (no markdown code blocks, just pure HTML).`;
           "X-Title": config.title || "Data Analysis App",
         },
         body: JSON.stringify({
-          model: config.model || "openai/gpt-oss-20b:free",
+          model: config.model || "x-ai/grok-4-fast",
           messages,
         }),
       }

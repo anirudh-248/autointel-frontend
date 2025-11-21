@@ -80,6 +80,7 @@ export default function UploadPage() {
   const [showStoryPresenter, setShowStoryPresenter] = useState(false);
   const [storyData, setStoryData] = useState<any>(null);
   const [storyLoading, setStoryLoading] = useState(false);
+  const [selectedLanguage, setSelectedLanguage] = useState<string>("en");
   const [reports, setReports] = useState<
     Array<{ id: string; title: string; content: string; html: string }>
   >([]);
@@ -1337,11 +1338,13 @@ export default function UploadPage() {
               reports={reports}
               isSQLSource={isSQLSource}
               storyLoading={storyLoading}
+              selectedLanguage={selectedLanguage}
               onInputChange={setInput}
               onSendMessage={sendMessage}
               onDownloadReport={handleDownloadReport}
               onGenerateStory={(language) => generateStory(undefined, language)}
               onToggleReportSelection={toggleReportSelection}
+              onLanguageChange={setSelectedLanguage}
               selectedReportIds={selectedReportIds}
             />
           </div>

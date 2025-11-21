@@ -63,7 +63,7 @@ Total rows: ${rows.length}
 Sample data (first 10 rows):
 ${JSON.stringify(sampleData, null, 2)}
 
-Create 6-10 diverse visualizations (bar, line, scatter, pie, box, histogram, etc.) that best represent the data patterns.
+Create 6-10 diverse visualizations (bar, line, scatter, pie, box, histogram, 3D charts, etc.) that best represent the data patterns.
 
 Respond with a JSON array of visualization specs. Each spec should have:
 {
@@ -117,7 +117,7 @@ Return ONLY a JSON array, no markdown formatting.`;
           "X-Title": config.title || "Data Analysis App",
         },
         body: JSON.stringify({
-          model: config.model || "openai/gpt-oss-20b:free",
+          model: config.model || "x-ai/grok-4-fast",
           messages,
           temperature: 0.7,
         }),

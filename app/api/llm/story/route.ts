@@ -38,19 +38,19 @@ const SARVAM_LANGUAGE_CODES: Record<string, string> = {
 
 // Sarvam AI speaker mapping (adjust based on available speakers)
 const SARVAM_SPEAKERS: Record<string, string> = {
-  en: "karun",
-  hi: "karun",
-  bn: "karun",
-  te: "karun",
-  mr: "karun",
-  ta: "karun",
-  gu: "karun",
-  kn: "karun",
-  ml: "karun",
-  pa: "karun",
-  or: "karun",
-  as: "karun",
-  ur: "karun",
+  en: "vidya",
+  hi: "vidya",
+  bn: "vidya",
+  te: "vidya",
+  mr: "vidya",
+  ta: "vidya",
+  gu: "vidya",
+  kn: "vidya",
+  ml: "vidya",
+  pa: "vidya",
+  or: "vidya",
+  as: "vidya",
+  ur: "vidya",
 };
 
 export async function POST(request: NextRequest) {
@@ -81,17 +81,25 @@ export async function POST(request: NextRequest) {
       selectedVisualizations
         ?.map(
           (viz: any, idx: number) =>
-            `Visualization ${idx + 1}: ${viz.title}\n${viz.description}`
+            `Visualization ${idx + 1} [ID: ${viz.id}]:\nTitle: ${
+              viz.title
+            }\nDescription: ${viz.description || "N/A"}`
         )
         .join("\n\n") || "";
+
+    // Log the visualization IDs being used
+    console.log(
+      "story API: Visualization IDs:",
+      selectedVisualizations?.map((v: any) => v.id)
+    );
 
     const reportContext_text =
       selectedReports
         ?.map(
           (report: any, idx: number) =>
-            `Report ${idx + 1}: ${report.title || "Analysis Report"}\n${
-              report.summary || report.content?.substring(0, 500)
-            }`
+            `Report ${idx + 1} [ID: ${report.id}]:\nTitle: ${
+              report.title || "Analysis Report"
+            }\nContent: ${report.summary || report.content?.substring(0, 500)}`
         )
         .join("\n\n") || "";
 
@@ -123,8 +131,16 @@ Generate a compelling presentation with:
    - Clear slide title (in ${languageName})
    - 3-5 bullet points explaining insights (in ${languageName})
    - Speaker notes (2-3 sentences for narration, conversational tone, in ${languageName})
+   - IMPORTANT: Use the EXACT visualization ID from the list above (e.g., "${
+     selectedVisualizations?.[0]?.id || "viz-xxx"
+   }")
 3. Slides for report summaries with key findings (in ${languageName})
 4. Conclusion slide with actionable takeaways (in ${languageName})
+
+CRITICAL: For visualization slides, you MUST use the exact ID from the visualizations list above.
+Available visualization IDs: ${
+      selectedVisualizations?.map((v: any) => v.id).join(", ") || "none"
+    }
 
 Respond in JSON format:
 {
@@ -135,8 +151,8 @@ Respond in JSON format:
       "title": "Slide Title in ${languageName}",
       "content": ["Bullet point 1 in ${languageName}", "Bullet point 2 in ${languageName}", "Bullet point 3 in ${languageName}"],
       "speakerNotes": "Speaker notes in ${languageName}. Natural and conversational.",
-      "visualizationId": "viz-id or null",
-      "reportId": "report-id or null",
+      "visualizationId": "EXACT_VIZ_ID_FROM_LIST_ABOVE or null",
+      "reportId": "EXACT_REPORT_ID_FROM_LIST_ABOVE or null",
       "type": "title|content|visualization|report|conclusion"
     }
   ]
@@ -164,7 +180,7 @@ Make speaker notes engaging and suitable for text-to-speech. Keep them under 100
           "X-Title": config.title || "Data Analysis App",
         },
         body: JSON.stringify({
-          model: config.model || "openai/gpt-oss-20b:free",
+          model: config.model || "x-ai/grok-4-fast",
           messages,
           temperature: 0.8,
         }),
@@ -190,6 +206,15 @@ Make speaker notes engaging and suitable for text-to-speech. Keep them under 100
 
     try {
       storyData = JSON.parse(jsonStr);
+      console.log(
+        "story API: Parsed story data with",
+        storyData.slides?.length,
+        "slides"
+      );
+      console.log(
+        "story API: Slide visualization IDs:",
+        storyData.slides?.map((s: any) => s.visualizationId).filter(Boolean)
+      );
     } catch (e) {
       console.error("Failed to parse story JSON:", e);
       throw new Error("Failed to generate story structure");
@@ -284,7 +309,7 @@ async function generateSarvamTTS(
     }
 
     const targetLanguageCode = SARVAM_LANGUAGE_CODES[language] || "en-IN";
-    const speaker = SARVAM_SPEAKERS[language] || "karun";
+    const speaker = SARVAM_SPEAKERS[language] || "vidya";
 
     console.log(
       `Trying Sarvam AI TTS for ${language} (${targetLanguageCode}) with speaker ${speaker} (attempt ${

@@ -206,6 +206,21 @@ const StoryPresenter: React.FC<StoryPresenterProps> = ({
     ? visualizations.find((v) => v.id === currentSlideData.visualizationId)
     : null;
 
+  // Debug logging
+  useEffect(() => {
+    if (currentSlideData?.visualizationId) {
+      console.log("Looking for viz ID:", currentSlideData.visualizationId);
+      console.log(
+        "Available visualizations:",
+        visualizations.map((v) => ({ id: v.id, title: v.title }))
+      );
+      console.log(
+        "Found currentViz:",
+        currentViz ? currentViz.title : "NOT FOUND"
+      );
+    }
+  }, [currentSlide, currentSlideData, visualizations, currentViz]);
+
   return (
     <div
       ref={containerRef}
@@ -224,6 +239,13 @@ const StoryPresenter: React.FC<StoryPresenterProps> = ({
         }
         .animate-fade-in { animation: fadeIn 0.6s ease-out forwards; }
         .animate-slide-in { animation: slideIn 0.8s ease-out forwards; }
+        
+        /* Perfect 16:9 slide container */
+        .slide-container {
+          width: min(calc(100vh * 1.6), calc(100vw - 4rem));
+          height: min(calc(100vh - 200px), calc((100vw - 4rem) * 0.5625));
+          margin: 0 auto;
+        }
       `}</style>
 
       <div className="h-full flex flex-col bg-white dark:bg-black">
@@ -321,101 +343,154 @@ const StoryPresenter: React.FC<StoryPresenterProps> = ({
         </div>
 
         {/* Main Content */}
-        <div className="flex-1 flex items-center justify-center p-8 overflow-auto bg-white dark:bg-black">
+        <div className="flex-1 flex items-center justify-center bg-slate-100 dark:bg-slate-900 overflow-hidden">
           {showWelcome ? (
-            <div className="w-full max-w-4xl bg-gradient-to-br from-blue-600 to-purple-700 p-16 rounded-2xl shadow-xl text-center text-white">
-              <div className="space-y-8 animate-fade-in">
-                <div className="text-6xl mb-4">🎬</div>
-                <h1 className="text-5xl font-bold mb-4">{presentationTitle}</h1>
-                <p className="text-2xl text-blue-100 mb-8">
-                  {presentationSubtitle}
-                </p>
-                <div className="space-y-4">
-                  <p className="text-lg text-blue-100">
-                    {totalSlides} slides • AI-Narrated • Interactive
+            <div className="slide-container">
+              <div className="w-full h-full bg-gradient-to-br from-blue-600 to-purple-700 rounded-xl shadow-2xl flex items-center justify-center p-8 overflow-hidden">
+                <div className="w-full max-w-3xl mx-auto space-y-4 animate-fade-in text-center text-white">
+                  <div className="text-5xl mb-3">🎬</div>
+                  <h1 className="text-3xl lg:text-4xl font-bold mb-2 px-4">
+                    {presentationTitle}
+                  </h1>
+                  <p className="text-lg lg:text-xl text-blue-100 mb-6 px-4">
+                    {presentationSubtitle}
                   </p>
-                  <div className="flex gap-4 justify-center mt-8">
-                    <button
-                      onClick={startPresentation}
-                      className="bg-white text-blue-600 hover:bg-gray-100 text-xl px-8 py-6 rounded-xl font-bold transition flex items-center gap-3 shadow-lg"
-                    >
-                      <svg
-                        className="w-6 h-6"
-                        fill="currentColor"
-                        viewBox="0 0 20 20"
+                  <div className="space-y-3">
+                    <p className="text-sm text-blue-100">
+                      {totalSlides} slides • AI-Narrated • Interactive
+                    </p>
+                    <div className="flex gap-3 justify-center mt-6">
+                      <button
+                        onClick={startPresentation}
+                        className="bg-white text-blue-600 hover:bg-gray-100 text-base px-6 py-3 rounded-lg font-bold transition flex items-center gap-2 shadow-lg"
                       >
-                        <path d="M10 18a8 8 0 100-16 8 8 0 000 16zM9.555 7.168A1 1 0 008 8v4a1 1 0 001.555.832l3-2a1 1 0 000-1.664l-3-2z" />
-                      </svg>
-                      Play Story Video
-                    </button>
-                    <button
-                      onClick={skipWelcome}
-                      className="border-2 border-white text-white hover:bg-white dark:bg-black/20 text-xl px-8 py-6 rounded-xl font-bold transition"
-                    >
-                      Browse Slides
-                    </button>
+                        <svg
+                          className="w-5 h-5"
+                          fill="currentColor"
+                          viewBox="0 0 20 20"
+                        >
+                          <path d="M10 18a8 8 0 100-16 8 8 0 000 16zM9.555 7.168A1 1 0 008 8v4a1 1 0 001.555.832l3-2a1 1 0 000-1.664l-3-2z" />
+                        </svg>
+                        Play Story
+                      </button>
+                      <button
+                        onClick={skipWelcome}
+                        className="border-2 border-white text-white hover:bg-white/10 text-base px-6 py-3 rounded-lg font-bold transition"
+                      >
+                        Browse Slides
+                      </button>
+                    </div>
                   </div>
-                </div>
-                <div className="mt-12 space-y-2 text-sm text-blue-100">
-                  <p>🎙️ AI-Generated Narration</p>
-                  <p>📊 Interactive Visualizations</p>
-                  <p>⏯️ Full Playback Controls</p>
+                  <div className="mt-6 space-y-1 text-xs text-blue-100">
+                    <p>
+                      🎙️ AI Narration • 📊 Interactive Charts • ⏯️ Full Controls
+                    </p>
+                  </div>
                 </div>
               </div>
             </div>
           ) : (
-            <div className="w-full max-w-6xl bg-white dark:bg-black rounded-xl shadow-lg border-2 overflow-hidden">
-              <div className="p-12">
-                <h1 className="text-4xl font-bold  mb-8 pb-4 border-b-4 border-blue-600 animate-fade-in">
-                  {currentSlideData?.title || "Loading..."}
-                </h1>
+            <div className="slide-container">
+              <div className="w-full h-full bg-white dark:bg-slate-950 rounded-xl shadow-2xl border border-slate-300 dark:border-slate-700 overflow-hidden flex flex-col">
+                <div className="flex-1 overflow-hidden p-6 lg:p-8">
+                  <h1 className="text-xl lg:text-2xl font-bold mb-4 pb-2 border-b-2 border-blue-600 animate-fade-in">
+                    {currentSlideData?.title || "Loading..."}
+                  </h1>
 
-                <div className="space-y-6 mb-8 animate-slide-in">
-                  {currentSlideData?.content?.map(
-                    (item: string, idx: number) => (
-                      <div
-                        key={idx}
-                        className="flex items-start gap-4 animate-fade-in"
-                        style={{ animationDelay: `${idx * 0.2}s` }}
-                      >
-                        <div className="w-3 h-3 rounded-full bg-blue-600 mt-2 flex-shrink-0" />
-                        <p className="text-xl  leading-relaxed">{item}</p>
+                  {/* Two-column layout when visualization exists */}
+                  {currentSlideData?.visualizationId && currentViz ? (
+                    <div className="grid grid-cols-2 gap-4 h-[calc(100%-5rem)] mb-3">
+                      {/* Left side: Content/Explanation */}
+                      <div className="space-y-2 overflow-y-auto pr-2 animate-slide-in">
+                        {currentSlideData?.content?.map(
+                          (item: string, idx: number) => (
+                            <div
+                              key={idx}
+                              className="flex items-start gap-2 animate-fade-in"
+                              style={{ animationDelay: `${idx * 0.1}s` }}
+                            >
+                              <div className="w-2 h-2 rounded-full bg-blue-600 mt-1.5 flex-shrink-0" />
+                              <p className="text-sm leading-relaxed">{item}</p>
+                            </div>
+                          )
+                        )}
                       </div>
-                    )
-                  )}
-                </div>
 
-                {currentViz && (
-                  <div className="mt-8 p-6 bg-slate-50 rounded-xl border-2">
-                    <h3 className="text-lg font-semibold text-slate-800 mb-4">
-                      📊 {currentViz.title}
-                    </h3>
-                    <div className="bg-white dark:bg-black rounded-lg p-4 border-2">
-                      <PlotlyRenderer
-                        data={currentViz.plotlyData}
-                        layout={{
-                          ...currentViz.plotlyLayout,
-                          autosize: true,
-                          height: 400,
-                          paper_bgcolor: "white",
-                          plot_bgcolor: "white",
-                        }}
-                        config={{ responsive: true, displayModeBar: false }}
-                      />
+                      {/* Right side: Visualization */}
+                      <div className="bg-slate-50 dark:bg-slate-900 rounded-lg border border-slate-200 dark:border-slate-700 p-3 animate-fade-in overflow-hidden flex flex-col">
+                        <h3 className="text-sm font-semibold text-slate-800 dark:text-slate-200 mb-2 flex-shrink-0">
+                          📊 {currentViz.title}
+                        </h3>
+                        <div className="flex-1 bg-white dark:bg-slate-950 rounded p-2 border border-slate-200 dark:border-slate-700 overflow-hidden">
+                          {currentViz.plotlyData &&
+                          currentViz.plotlyData.length > 0 ? (
+                            <PlotlyRenderer
+                              data={currentViz.plotlyData}
+                              layout={{
+                                ...currentViz.plotlyLayout,
+                                autosize: true,
+                                margin: { l: 30, r: 20, t: 20, b: 30 },
+                                paper_bgcolor: "rgba(0,0,0,0)",
+                                plot_bgcolor: "rgba(0,0,0,0)",
+                                font: { size: 9 },
+                              }}
+                              config={{
+                                responsive: true,
+                                displayModeBar: false,
+                                displaylogo: false,
+                              }}
+                            />
+                          ) : (
+                            <div className="text-center py-4 text-slate-500">
+                              <p className="text-xs">
+                                Visualization data not available
+                              </p>
+                            </div>
+                          )}
+                        </div>
+                      </div>
                     </div>
-                    {currentViz.description && (
-                      <p className="text-sm  mt-4">{currentViz.description}</p>
-                    )}
-                  </div>
-                )}
+                  ) : (
+                    /* Single column layout when no visualization */
+                    <div className="space-y-3 mb-3 h-[calc(100%-5rem)] overflow-y-auto pr-2 animate-slide-in">
+                      {currentSlideData?.content?.map(
+                        (item: string, idx: number) => (
+                          <div
+                            key={idx}
+                            className="flex items-start gap-3 animate-fade-in"
+                            style={{ animationDelay: `${idx * 0.1}s` }}
+                          >
+                            <div className="w-2 h-2 rounded-full bg-blue-600 mt-1.5 flex-shrink-0" />
+                            <p className="text-base leading-relaxed">{item}</p>
+                          </div>
+                        )
+                      )}
+                    </div>
+                  )}
 
-                <div className="mt-8 p-6 rounded-xl border-l-4 border-2 border-blue-600 animate-fade-in">
-                  <p className="text-sm font-semibold mb-2 flex items-center gap-2">
-                    📝 Speaker Notes
-                  </p>
-                  <p className="leading-relaxed">
-                    {currentSlideData?.speakerNotes || "No notes available"}
-                  </p>
+                  {/* Error state for missing visualization */}
+                  {currentSlideData?.visualizationId && !currentViz && (
+                    <div className="mb-3 p-3 bg-slate-50 dark:bg-slate-900 rounded border border-slate-200 dark:border-slate-700">
+                      <div className="text-center py-3">
+                        <div className="text-yellow-600 dark:text-yellow-400 mb-1 text-xs">
+                          ⚠️ Visualization not found
+                        </div>
+                        <p className="text-xs text-slate-600 dark:text-slate-400">
+                          ID: {currentSlideData.visualizationId}
+                        </p>
+                      </div>
+                    </div>
+                  )}
+
+                  {/* Speaker Notes */}
+                  <div className="mt-auto p-3 rounded border-l-2 border border-blue-600 bg-blue-50/50 dark:bg-blue-950/20 animate-fade-in">
+                    <p className="text-xs font-semibold mb-1 flex items-center gap-1">
+                      📝 Speaker Notes
+                    </p>
+                    <p className="text-xs leading-relaxed line-clamp-2">
+                      {currentSlideData?.speakerNotes || "No notes available"}
+                    </p>
+                  </div>
                 </div>
               </div>
             </div>
