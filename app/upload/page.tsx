@@ -24,7 +24,6 @@ import {
 import { PreviewTable } from "@/components/upload/PreviewTable";
 import MongoOverview from "@/components/upload/MongoOverview";
 import { getUserInfo } from "@/lib/api";
-import { useAuth } from "@/app/context/AuthContext";
 import { useRouter } from "next/navigation";
 
 import { ApiKeyConfig } from "@/components/upload/APIKeyConfig";
@@ -41,8 +40,8 @@ import StoryPresenter from "@/components/upload/StoryPresenter";
 import { connection } from "next/server";
 
 export default function UploadPage() {
-  const { isLoggedIn } = useAuth();
   const router = useRouter();
+  const [isCheckingAuth, setIsCheckingAuth] = useState(true);
   const [source, setSource] = useState<DataSourceType>("csv");
   const [dataset, setDataset] = useState<DataSet | null>(null);
   const [dburi, setDburi] = useState<string>("");
@@ -97,12 +96,15 @@ export default function UploadPage() {
   const sqlOps = useSQLOperations(dbType);
   const { downloadReport, downloadLoading } = useReportDownload();
 
-  // Redirect to login if not authenticated
+  // Check authentication on mount (client-side only, no API call)
   useEffect(() => {
-    if (!isLoggedIn) {
+    const token = localStorage.getItem("token");
+    if (!token) {
       router.push("/login");
+    } else {
+      setIsCheckingAuth(false);
     }
-  }, [isLoggedIn, router]);
+  }, [router]);
 
   useEffect(() => {
     try {
@@ -1158,8 +1160,8 @@ export default function UploadPage() {
 
   const isSQLSource = ["postgresql", "sqlite", "mysql"].includes(dbType);
 
-  // Show nothing while checking authentication
-  if (!isLoggedIn) {
+  // Don't render anything while checking auth
+  if (isCheckingAuth) {
     return null;
   }
 
