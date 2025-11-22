@@ -96,17 +96,27 @@ export default function UploadPage() {
   const sqlOps = useSQLOperations(dbType);
   const { downloadReport, downloadLoading } = useReportDownload();
 
-  // Check authentication on mount (client-side only, no API call)
+  // Check authentication on mount by calling getUserInfo
   useEffect(() => {
-    const token = localStorage.getItem("token");
-    if (!token) {
-      router.push("/login");
-    } else {
-      setIsCheckingAuth(false);
-    }
-  }, [router]);
+    const checkAuth = async () => {
+      const token = localStorage.getItem("token");
+      if (!token) {
+        router.push("/login");
+        return;
+      }
 
-  useEffect(() => {
+      try {
+        const res = await getUserInfo();
+        const data = typeof res === "string" ? JSON.parse(res as any) : res;
+        setUserInfo(data.data);
+        setIsCheckingAuth(false);
+      } catch (err) {
+        console.log("Failed to authenticate user:", err);
+        localStorage.removeItem("token");
+        router.push("/login");
+      }
+    };
+
     try {
       const saved = localStorage.getItem("OPENROUTER_API_KEY");
       if (saved) setOpenRouterKey(saved);
@@ -122,8 +132,8 @@ export default function UploadPage() {
       }
     } catch {}
 
-    loadUserInfo();
-  }, []);
+    checkAuth();
+  }, [router]);
 
   useEffect(() => {
     if (!userInfo) return;
