@@ -47,6 +47,15 @@ function looksLikeOpenRouterKey(key?: string) {
   return key.startsWith("sk-or-") || key.startsWith("or-");
 }
 
+function isLocalURL(baseURL?: string) {
+  if (!baseURL) return false;
+  return (
+    baseURL.includes("localhost") ||
+    baseURL.includes("127.0.0.1") ||
+    baseURL.includes("0.0.0.0")
+  );
+}
+
 function preferOpenRouter(
   config: PartialClientConfig | undefined,
   apiKey: string
@@ -74,15 +83,23 @@ function preferOpenRouter(
 export function resolveOpenRouterConfig(
   config?: PartialClientConfig
 ): LLMClientConfig {
-  const apiKey = config?.apiKey?.trim() || ENV_OPENROUTER_KEY || ENV_OPENAI_KEY;
+  // Allow empty API key for local models
+  const apiKey =
+    config?.apiKey?.trim() || ENV_OPENROUTER_KEY || ENV_OPENAI_KEY || "";
+  const isLocal = isLocalURL(config?.baseURL);
 
-  if (!apiKey) {
+  // Only require API key for non-local endpoints
+  if (!apiKey && !isLocal) {
     throw new Error(
-      "Missing OpenRouter/OpenAI API key. Provide config.apiKey or set OPENROUTER_API_KEY/OPENAI_API_KEY."
+      "Missing API key. Provide config.apiKey or set OPENROUTER_API_KEY/OPENAI_API_KEY for remote endpoints."
     );
   }
 
   const useOpenRouter = preferOpenRouter(config, apiKey);
+
+  // Use user-provided model if available, NEVER fallback to env model
+  const model =
+    config?.model || (useOpenRouter ? OPENROUTER_MODEL : OPENAI_MODEL);
 
   const embeddingModel =
     config?.embeddingModel ||
@@ -91,12 +108,14 @@ export function resolveOpenRouterConfig(
   const embeddingDimensions =
     config?.embeddingDimensions ?? DEFAULT_EMBED_DIM ?? undefined;
 
+  // Use user-provided baseURL, or fallback to default
+  const baseURL =
+    config?.baseURL || (useOpenRouter ? OPENROUTER_BASE_URL : OPENAI_BASE_URL);
+
   return {
     apiKey,
-    baseURL:
-      config?.baseURL ||
-      (useOpenRouter ? OPENROUTER_BASE_URL : OPENAI_BASE_URL),
-    model: config?.model || (useOpenRouter ? OPENROUTER_MODEL : OPENAI_MODEL),
+    baseURL,
+    model,
     embeddingModel,
     embeddingDimensions,
     temperature: config?.temperature ?? 0.1,

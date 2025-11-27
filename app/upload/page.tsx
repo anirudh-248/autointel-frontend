@@ -24,6 +24,7 @@ import {
 import { PreviewTable } from "@/components/upload/PreviewTable";
 import MongoOverview from "@/components/upload/MongoOverview";
 import { getUserInfo } from "@/lib/api";
+import { useRouter } from "next/navigation";
 
 import { ApiKeyConfig } from "@/components/upload/APIKeyConfig";
 import { AdSenseBanner } from "@/components/upload/AdSenseBanner";
@@ -39,6 +40,8 @@ import StoryPresenter from "@/components/upload/StoryPresenter";
 import { connection } from "next/server";
 
 export default function UploadPage() {
+  const router = useRouter();
+  const [isCheckingAuth, setIsCheckingAuth] = useState(true);
   const [source, setSource] = useState<DataSourceType>("csv");
   const [dataset, setDataset] = useState<DataSet | null>(null);
   const [dburi, setDburi] = useState<string>("");
@@ -46,6 +49,8 @@ export default function UploadPage() {
   const [originalDataset, setOriginalDataset] = useState<DataSet | null>(null);
   const [error, setError] = useState<string>("");
   const [openRouterKey, setOpenRouterKey] = useState<string>("");
+  const [modelName, setModelName] = useState<string>("");
+  const [baseURL, setBaseURL] = useState<string>("");
   const [showAdSenseBanner, setShowAdSenseBanner] = useState(false);
 
   // SQL-specific states
@@ -92,14 +97,52 @@ export default function UploadPage() {
   const sqlOps = useSQLOperations(dbType);
   const { downloadReport, downloadLoading } = useReportDownload();
 
+  // Check authentication on mount by calling getUserInfo
   useEffect(() => {
+    const checkAuth = async () => {
+      const token = localStorage.getItem("token");
+      if (!token) {
+        router.push("/login");
+        return;
+      }
+
+      try {
+        const res = await getUserInfo();
+        const data = typeof res === "string" ? JSON.parse(res as any) : res;
+        setUserInfo(data.data);
+        setIsCheckingAuth(false);
+      } catch (err) {
+        console.log("Failed to authenticate user:", err);
+        localStorage.removeItem("token");
+        router.push("/login");
+      }
+    };
+
     try {
       const saved = localStorage.getItem("OPENROUTER_API_KEY");
       if (saved) setOpenRouterKey(saved);
+
+      const savedModel = localStorage.getItem("OPENROUTER_MODEL_NAME");
+      if (savedModel) {
+        setModelName(savedModel);
+      } else {
+        // Set default from env
+        setModelName(
+          process.env.NEXT_PUBLIC_OPENROUTER_MODEL || "x-ai/grok-4-fast"
+        );
+      }
+
+      const savedBaseURL = localStorage.getItem("OPENROUTER_BASE_URL");
+      if (savedBaseURL) {
+        setBaseURL(savedBaseURL);
+      } else {
+        // Set default to OpenRouter
+        setBaseURL("https://openrouter.ai/api/v1");
+      }
     } catch {}
 
-    loadUserInfo();
-  }, []);
+    checkAuth();
+  }, [router]);
 
   useEffect(() => {
     if (!userInfo) return;
@@ -196,8 +239,9 @@ export default function UploadPage() {
   }, []);
 
   const config: OpenRouterConfig = {
-    apiKey: openRouterKey || process.env.NEXT_PUBLIC_OPENROUTER_API_KEY || "",
-    model: process.env.NEXT_PUBLIC_OPENROUTER_MODEL,
+    apiKey: openRouterKey,
+    model: modelName,
+    baseURL: baseURL,
     referer: process.env.NEXT_PUBLIC_OPENROUTER_REFERER,
     title: process.env.NEXT_PUBLIC_OPENROUTER_TITLE,
   };
@@ -284,12 +328,17 @@ export default function UploadPage() {
   const saveApiKey = () => {
     try {
       localStorage.setItem("OPENROUTER_API_KEY", openRouterKey);
+      localStorage.setItem("OPENROUTER_MODEL_NAME", modelName);
+      localStorage.setItem("OPENROUTER_BASE_URL", baseURL);
       setError("");
       setMessages([
-        { role: "assistant", content: "✓ API key saved successfully!" },
+        {
+          role: "assistant",
+          content: `✓ API configuration saved successfully! Using model: ${modelName} at ${baseURL}`,
+        },
       ]);
     } catch {
-      setError("Failed to save API key");
+      setError("Failed to save API configuration");
     }
   };
 
@@ -1129,6 +1178,11 @@ export default function UploadPage() {
 
   const isSQLSource = ["postgresql", "sqlite", "mysql"].includes(dbType);
 
+  // Don't render anything while checking auth
+  if (isCheckingAuth) {
+    return null;
+  }
+
   return (
     <div className="container mx-auto px-4 md:px-16 py-8 md:pt-24">
       {/* Story Presenter Modal */}
@@ -1156,7 +1210,11 @@ export default function UploadPage() {
       <div className="mb-6">
         <ApiKeyConfig
           apiKey={openRouterKey}
+          modelName={modelName}
+          baseURL={baseURL}
           onApiKeyChange={setOpenRouterKey}
+          onModelNameChange={setModelName}
+          onBaseURLChange={setBaseURL}
           onSave={saveApiKey}
         />
       </div>
