@@ -50,6 +50,7 @@ export default function UploadPage() {
   const [error, setError] = useState<string>("");
   const [openRouterKey, setOpenRouterKey] = useState<string>("");
   const [modelName, setModelName] = useState<string>("");
+  const [baseURL, setBaseURL] = useState<string>("");
   const [showAdSenseBanner, setShowAdSenseBanner] = useState(false);
 
   // SQL-specific states
@@ -129,6 +130,14 @@ export default function UploadPage() {
         setModelName(
           process.env.NEXT_PUBLIC_OPENROUTER_MODEL || "x-ai/grok-4-fast"
         );
+      }
+
+      const savedBaseURL = localStorage.getItem("OPENROUTER_BASE_URL");
+      if (savedBaseURL) {
+        setBaseURL(savedBaseURL);
+      } else {
+        // Set default to OpenRouter
+        setBaseURL("https://openrouter.ai/api/v1");
       }
     } catch {}
 
@@ -230,11 +239,9 @@ export default function UploadPage() {
   }, []);
 
   const config: OpenRouterConfig = {
-    apiKey: openRouterKey || process.env.NEXT_PUBLIC_OPENROUTER_API_KEY || "",
-    model:
-      modelName ||
-      process.env.NEXT_PUBLIC_OPENROUTER_MODEL ||
-      "x-ai/grok-4-fast",
+    apiKey: openRouterKey,
+    model: modelName,
+    baseURL: baseURL,
     referer: process.env.NEXT_PUBLIC_OPENROUTER_REFERER,
     title: process.env.NEXT_PUBLIC_OPENROUTER_TITLE,
   };
@@ -322,11 +329,12 @@ export default function UploadPage() {
     try {
       localStorage.setItem("OPENROUTER_API_KEY", openRouterKey);
       localStorage.setItem("OPENROUTER_MODEL_NAME", modelName);
+      localStorage.setItem("OPENROUTER_BASE_URL", baseURL);
       setError("");
       setMessages([
         {
           role: "assistant",
-          content: `✓ API configuration saved successfully! Using model: ${modelName}`,
+          content: `✓ API configuration saved successfully! Using model: ${modelName} at ${baseURL}`,
         },
       ]);
     } catch {
@@ -1203,8 +1211,10 @@ export default function UploadPage() {
         <ApiKeyConfig
           apiKey={openRouterKey}
           modelName={modelName}
+          baseURL={baseURL}
           onApiKeyChange={setOpenRouterKey}
           onModelNameChange={setModelName}
+          onBaseURLChange={setBaseURL}
           onSave={saveApiKey}
         />
       </div>
