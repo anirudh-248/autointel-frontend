@@ -1375,7 +1375,7 @@ export default function UploadPage() {
                     dataset={dataset}
                     isSQLSource={isSQLSource}
                     dbType={dbType}
-                    dburi={dburi}
+                    dburi={maskUri(dburi)}
                     sqlTableData={sqlTableData}
                     sqlColumns={sqlColumns}
                   />
