@@ -91,16 +91,7 @@ export async function POST(request: NextRequest) {
     // Fetch report data for last 90 days
     const report = await adsense.accounts.reports.generate({
       account: accountName,
-      startDate: {
-        year: startDate.getFullYear(),
-        month: startDate.getMonth() + 1,
-        day: startDate.getDate(),
-      },
-      endDate: {
-        year: endDate.getFullYear(),
-        month: endDate.getMonth() + 1,
-        day: endDate.getDate(),
-      },
+      dateRange: "LAST_90_DAYS" as any,
       dimensions: ["DATE", "AD_UNIT_NAME", "COUNTRY_NAME"],
       metrics: [
         "CLICKS",
@@ -111,7 +102,7 @@ export async function POST(request: NextRequest) {
         "AD_REQUESTS_COVERAGE",
         "PAGE_VIEWS_CTR",
       ],
-    });
+    } as any);
 
     const reportRows = report.data.rows || [];
 
