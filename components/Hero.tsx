@@ -3,7 +3,7 @@ import Link from "next/link";
 import { Button } from "./ui/button";
 import { motion } from "framer-motion";
 import { ArrowRight } from "lucide-react";
-import hero_mockup from "../public/hero-mockup.webp";
+import hero_mockup from "../public/hero-mockup.png";
 import Image from "next/image";
 
 export default function Hero() {

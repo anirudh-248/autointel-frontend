@@ -242,19 +242,30 @@ const StoryPresenter: React.FC<StoryPresenterProps> = ({
         
         /* Perfect 16:9 slide container */
         .slide-container {
-          width: min(calc(100vh * 1.6), calc(100vw - 4rem));
-          height: min(calc(100vh - 200px), calc((100vw - 4rem) * 0.5625));
+          width: 100%;
+          max-width: min(calc(100vh * 1.6), calc(100vw - 2rem));
+          height: auto;
+          max-height: min(calc(100vh - 200px), calc((100vw - 2rem) * 0.5625));
           margin: 0 auto;
+          padding: 0 1rem;
+        }
+        
+        @media (min-width: 768px) {
+          .slide-container {
+            max-width: min(calc(100vh * 1.6), calc(100vw - 4rem));
+            max-height: min(calc(100vh - 200px), calc((100vw - 4rem) * 0.5625));
+            padding: 0;
+          }
         }
       `}</style>
 
       <div className="h-full flex flex-col bg-white dark:bg-black">
         {/* Header - matching upload page style */}
-        <div className="flex items-center justify-between px-4 md:px-16 py-4 border-b border-2 bg-white dark:bg-black">
-          <div className="flex items-center gap-4">
+        <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between px-4 sm:px-6 md:px-16 py-3 sm:py-4 border-b border-2 bg-white dark:bg-black gap-3 overflow-x-hidden">
+          <div className="flex items-center gap-2 sm:gap-4 min-w-0 w-full sm:w-auto">
             <button
               onClick={onClose}
-              className="p-2 hover:bg-slate-100 rounded-lg transition "
+              className="p-2 hover:bg-slate-100 rounded-lg transition shrink-0"
               aria-label="Close presentation"
             >
               <svg
@@ -271,17 +282,21 @@ const StoryPresenter: React.FC<StoryPresenterProps> = ({
                 />
               </svg>
             </button>
-            <div>
-              <h2 className="text-xl font-bold ">{presentationTitle}</h2>
-              <p className="text-sm ">{presentationSubtitle}</p>
+            <div className="min-w-0 flex-1">
+              <h2 className="text-base sm:text-xl font-bold truncate">
+                {presentationTitle}
+              </h2>
+              <p className="text-xs sm:text-sm truncate">
+                {presentationSubtitle}
+              </p>
             </div>
           </div>
-          <div className="flex items-center gap-2">
-            <span className="px-3 py-1 bg-slate-100 dark:bg-slate-800 rounded-lg text-sm font-medium">
+          <div className="flex items-center gap-2 flex-wrap w-full sm:w-auto justify-end">
+            <span className="px-2 sm:px-3 py-1 bg-slate-100 dark:bg-slate-800 rounded-lg text-xs sm:text-sm font-medium shrink-0">
               {currentSlide + 1} / {totalSlides}
             </span>
             {autoPlay && (
-              <span className="px-3 py-1 bg-red-100 text-red-700 rounded-lg text-sm font-medium flex items-center gap-1">
+              <span className="px-2 sm:px-3 py-1 bg-red-100 text-red-700 rounded-lg text-xs sm:text-sm font-medium flex items-center gap-1 shrink-0">
                 <svg
                   className="w-3 h-3"
                   fill="currentColor"
@@ -289,24 +304,30 @@ const StoryPresenter: React.FC<StoryPresenterProps> = ({
                 >
                   <path d="M10 18a8 8 0 100-16 8 8 0 000 16zM9.555 7.168A1 1 0 008 8v4a1 1 0 001.555.832l3-2a1 1 0 000-1.664l-3-2z" />
                 </svg>
-                Auto-Playing
+                <span className="hidden sm:inline">Auto-Playing</span>
+                <span className="sm:hidden">Auto</span>
               </span>
             )}
             <button
               onClick={startPresentation}
-              className="px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-lg text-sm font-medium transition flex items-center gap-2 shadow-sm"
+              className="px-3 sm:px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-lg text-xs sm:text-sm font-medium transition flex items-center gap-1 sm:gap-2 shadow-sm shrink-0"
             >
-              <svg className="w-4 h-4" fill="currentColor" viewBox="0 0 20 20">
+              <svg
+                className="w-3 h-3 sm:w-4 sm:h-4"
+                fill="currentColor"
+                viewBox="0 0 20 20"
+              >
                 <path d="M10 18a8 8 0 100-16 8 8 0 000 16zM9.555 7.168A1 1 0 008 8v4a1 1 0 001.555.832l3-2a1 1 0 000-1.664l-3-2z" />
               </svg>
-              Play Story
+              <span className="hidden sm:inline">Play Story</span>
+              <span className="sm:hidden">Play</span>
             </button>
             <button
               onClick={downloadPresentation}
-              className="px-4 py-2 bg-white dark:bg-black hover:bg-slate-50  border border-slate-300 rounded-lg text-sm font-medium transition flex items-center gap-2"
+              className="px-3 sm:px-4 py-2 bg-white dark:bg-black hover:bg-slate-50 border border-slate-300 rounded-lg text-xs sm:text-sm font-medium transition flex items-center gap-1 sm:gap-2 shrink-0"
             >
               <svg
-                className="w-4 h-4"
+                className="w-3 h-3 sm:w-4 sm:h-4"
                 fill="none"
                 stroke="currentColor"
                 viewBox="0 0 24 24"
@@ -318,11 +339,12 @@ const StoryPresenter: React.FC<StoryPresenterProps> = ({
                   d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4"
                 />
               </svg>
-              Download PPTX
+              <span className="hidden md:inline">Download PPTX</span>
+              <span className="md:hidden">PPTX</span>
             </button>
             <button
               onClick={toggleFullscreen}
-              className="p-2 hover:bg-slate-100 rounded-lg transition "
+              className="p-2 hover:bg-slate-100 rounded-lg transition shrink-0 hidden sm:block"
               aria-label="Toggle fullscreen"
             >
               <svg
@@ -346,26 +368,26 @@ const StoryPresenter: React.FC<StoryPresenterProps> = ({
         <div className="flex-1 flex items-center justify-center bg-slate-100 dark:bg-slate-900 overflow-hidden">
           {showWelcome ? (
             <div className="slide-container">
-              <div className="w-full h-full bg-gradient-to-br from-blue-600 to-purple-700 rounded-xl shadow-2xl flex items-center justify-center p-8 overflow-hidden">
-                <div className="w-full max-w-3xl mx-auto space-y-4 animate-fade-in text-center text-white">
-                  <div className="text-5xl mb-3">🎬</div>
-                  <h1 className="text-3xl lg:text-4xl font-bold mb-2 px-4">
+              <div className="w-full h-full min-h-[400px] bg-gradient-to-br from-blue-600 to-purple-700 rounded-xl shadow-2xl flex items-center justify-center p-4 sm:p-6 md:p-8 overflow-hidden">
+                <div className="w-full max-w-3xl mx-auto space-y-3 sm:space-y-4 animate-fade-in text-center text-white">
+                  <div className="text-3xl sm:text-5xl mb-2 sm:mb-3">🎬</div>
+                  <h1 className="text-2xl sm:text-3xl lg:text-4xl font-bold mb-2 px-2 sm:px-4">
                     {presentationTitle}
                   </h1>
-                  <p className="text-lg lg:text-xl text-blue-100 mb-6 px-4">
+                  <p className="text-base sm:text-lg lg:text-xl text-blue-100 mb-4 sm:mb-6 px-2 sm:px-4">
                     {presentationSubtitle}
                   </p>
-                  <div className="space-y-3">
-                    <p className="text-sm text-blue-100">
+                  <div className="space-y-2 sm:space-y-3">
+                    <p className="text-xs sm:text-sm text-blue-100">
                       {totalSlides} slides • AI-Narrated • Interactive
                     </p>
-                    <div className="flex gap-3 justify-center mt-6">
+                    <div className="flex flex-col sm:flex-row gap-3 justify-center mt-4 sm:mt-6 px-4">
                       <button
                         onClick={startPresentation}
-                        className="bg-white text-blue-600 hover:bg-gray-100 text-base px-6 py-3 rounded-lg font-bold transition flex items-center gap-2 shadow-lg"
+                        className="bg-white text-blue-600 hover:bg-gray-100 text-sm sm:text-base px-5 sm:px-6 py-2.5 sm:py-3 rounded-lg font-bold transition flex items-center justify-center gap-2 shadow-lg w-full sm:w-auto"
                       >
                         <svg
-                          className="w-5 h-5"
+                          className="w-4 h-4 sm:w-5 sm:h-5"
                           fill="currentColor"
                           viewBox="0 0 20 20"
                         >
@@ -375,13 +397,13 @@ const StoryPresenter: React.FC<StoryPresenterProps> = ({
                       </button>
                       <button
                         onClick={skipWelcome}
-                        className="border-2 border-white text-white hover:bg-white/10 text-base px-6 py-3 rounded-lg font-bold transition"
+                        className="border-2 border-white text-white hover:bg-white/10 text-sm sm:text-base px-5 sm:px-6 py-2.5 sm:py-3 rounded-lg font-bold transition w-full sm:w-auto"
                       >
                         Browse Slides
                       </button>
                     </div>
                   </div>
-                  <div className="mt-6 space-y-1 text-xs text-blue-100">
+                  <div className="mt-4 sm:mt-6 space-y-1 text-xs text-blue-100 px-4">
                     <p>
                       🎙️ AI Narration • 📊 Interactive Charts • ⏯️ Full Controls
                     </p>
@@ -391,17 +413,17 @@ const StoryPresenter: React.FC<StoryPresenterProps> = ({
             </div>
           ) : (
             <div className="slide-container">
-              <div className="w-full h-full bg-white dark:bg-slate-950 rounded-xl shadow-2xl border border-slate-300 dark:border-slate-700 overflow-hidden flex flex-col">
-                <div className="flex-1 overflow-hidden p-6 lg:p-8">
-                  <h1 className="text-xl lg:text-2xl font-bold mb-4 pb-2 border-b-2 border-blue-600 animate-fade-in">
+              <div className="w-full h-full min-h-[400px] bg-white dark:bg-slate-950 rounded-xl shadow-2xl border border-slate-300 dark:border-slate-700 overflow-hidden flex flex-col">
+                <div className="flex-1 overflow-hidden p-3 sm:p-4 md:p-6 lg:p-8">
+                  <h1 className="text-lg sm:text-xl lg:text-2xl font-bold mb-3 sm:mb-4 pb-2 border-b-2 border-blue-600 animate-fade-in truncate">
                     {currentSlideData?.title || "Loading..."}
                   </h1>
 
                   {/* Two-column layout when visualization exists */}
                   {currentSlideData?.visualizationId && currentViz ? (
-                    <div className="grid grid-cols-2 gap-4 h-[calc(100%-5rem)] mb-3">
+                    <div className="grid grid-cols-1 lg:grid-cols-2 gap-3 sm:gap-4 h-[calc(100%-4rem)] sm:h-[calc(100%-5rem)] mb-3 overflow-hidden">
                       {/* Left side: Content/Explanation */}
-                      <div className="space-y-2 overflow-y-auto pr-2 animate-slide-in">
+                      <div className="space-y-2 overflow-y-auto pr-2 animate-slide-in max-h-[200px] lg:max-h-none">
                         {currentSlideData?.content?.map(
                           (item: string, idx: number) => (
                             <div
@@ -409,16 +431,18 @@ const StoryPresenter: React.FC<StoryPresenterProps> = ({
                               className="flex items-start gap-2 animate-fade-in"
                               style={{ animationDelay: `${idx * 0.1}s` }}
                             >
-                              <div className="w-2 h-2 rounded-full bg-blue-600 mt-1.5 flex-shrink-0" />
-                              <p className="text-sm leading-relaxed">{item}</p>
+                              <div className="w-1.5 h-1.5 sm:w-2 sm:h-2 rounded-full bg-blue-600 mt-1.5 flex-shrink-0" />
+                              <p className="text-xs sm:text-sm leading-relaxed">
+                                {item}
+                              </p>
                             </div>
                           )
                         )}
                       </div>
 
                       {/* Right side: Visualization */}
-                      <div className="bg-slate-50 dark:bg-slate-900 rounded-lg border border-slate-200 dark:border-slate-700 p-3 animate-fade-in overflow-hidden flex flex-col">
-                        <h3 className="text-sm font-semibold text-slate-800 dark:text-slate-200 mb-2 flex-shrink-0">
+                      <div className="bg-slate-50 dark:bg-slate-900 rounded-lg border border-slate-200 dark:border-slate-700 p-2 sm:p-3 animate-fade-in overflow-hidden flex flex-col min-h-[250px]">
+                        <h3 className="text-xs sm:text-sm font-semibold text-slate-800 dark:text-slate-200 mb-2 flex-shrink-0 truncate">
                           📊 {currentViz.title}
                         </h3>
                         <div className="flex-1 bg-white dark:bg-slate-950 rounded p-2 border border-slate-200 dark:border-slate-700 overflow-hidden">
@@ -452,16 +476,18 @@ const StoryPresenter: React.FC<StoryPresenterProps> = ({
                     </div>
                   ) : (
                     /* Single column layout when no visualization */
-                    <div className="space-y-3 mb-3 h-[calc(100%-5rem)] overflow-y-auto pr-2 animate-slide-in">
+                    <div className="space-y-2 sm:space-y-3 mb-3 h-[calc(100%-4rem)] sm:h-[calc(100%-5rem)] overflow-y-auto pr-2 animate-slide-in">
                       {currentSlideData?.content?.map(
                         (item: string, idx: number) => (
                           <div
                             key={idx}
-                            className="flex items-start gap-3 animate-fade-in"
+                            className="flex items-start gap-2 sm:gap-3 animate-fade-in"
                             style={{ animationDelay: `${idx * 0.1}s` }}
                           >
-                            <div className="w-2 h-2 rounded-full bg-blue-600 mt-1.5 flex-shrink-0" />
-                            <p className="text-base leading-relaxed">{item}</p>
+                            <div className="w-1.5 h-1.5 sm:w-2 sm:h-2 rounded-full bg-blue-600 mt-1.5 flex-shrink-0" />
+                            <p className="text-sm sm:text-base leading-relaxed">
+                              {item}
+                            </p>
                           </div>
                         )
                       )}
@@ -483,11 +509,11 @@ const StoryPresenter: React.FC<StoryPresenterProps> = ({
                   )}
 
                   {/* Speaker Notes */}
-                  <div className="mt-auto p-3 rounded border-l-2 border border-blue-600 bg-blue-50/50 dark:bg-blue-950/20 animate-fade-in">
+                  <div className="mt-auto p-2 sm:p-3 rounded border-l-2 border border-blue-600 bg-blue-50/50 dark:bg-blue-950/20 animate-fade-in">
                     <p className="text-xs font-semibold mb-1 flex items-center gap-1">
-                      📝 Speaker Notes
+                      📝 <span className="hidden sm:inline">Speaker Notes</span>
                     </p>
-                    <p className="text-xs leading-relaxed line-clamp-2">
+                    <p className="text-xs leading-relaxed line-clamp-2 sm:line-clamp-3">
                       {currentSlideData?.speakerNotes || "No notes available"}
                     </p>
                   </div>
@@ -498,9 +524,9 @@ const StoryPresenter: React.FC<StoryPresenterProps> = ({
         </div>
 
         {/* Controls - matching upload page style */}
-        <div className="border-t border-2 bg-white dark:bg-black p-4 space-y-4">
+        <div className="border-t border-2 bg-white dark:bg-black p-3 sm:p-4 space-y-3 sm:space-y-4 overflow-x-hidden">
           {currentSlideData?.audioData && (
-            <div className="max-w-4xl mx-auto">
+            <div className="max-w-4xl mx-auto px-2 sm:px-0">
               <div className="h-2 bg-slate-200 dark:bg-slate-900 rounded-full overflow-hidden">
                 <div
                   className="h-full bg-blue-600 transition-all duration-300"
@@ -510,15 +536,15 @@ const StoryPresenter: React.FC<StoryPresenterProps> = ({
             </div>
           )}
 
-          <div className="flex items-center justify-center gap-4">
+          <div className="flex items-center justify-center gap-2 sm:gap-4 flex-wrap">
             <button
               onClick={prevSlide}
               disabled={currentSlide === 0}
-              className="p-3 bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 disabled:opacity-50 disabled:cursor-not-allowed rounded-lg transition "
+              className="p-2 sm:p-3 bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 disabled:opacity-50 disabled:cursor-not-allowed rounded-lg transition shrink-0"
               aria-label="Previous slide"
             >
               <svg
-                className="w-6 h-6"
+                className="w-5 h-5 sm:w-6 sm:h-6"
                 fill="none"
                 stroke="currentColor"
                 viewBox="0 0 24 24"
@@ -536,12 +562,12 @@ const StoryPresenter: React.FC<StoryPresenterProps> = ({
               <>
                 <button
                   onClick={togglePlay}
-                  className="p-4 bg-blue-600 hover:bg-blue-700 rounded-lg transition text-white shadow-sm"
+                  className="p-3 sm:p-4 bg-blue-600 hover:bg-blue-700 rounded-lg transition text-white shadow-sm shrink-0"
                   aria-label={isPlaying ? "Pause" : "Play"}
                 >
                   {isPlaying ? (
                     <svg
-                      className="w-6 h-6"
+                      className="w-5 h-5 sm:w-6 sm:h-6"
                       fill="none"
                       stroke="currentColor"
                       viewBox="0 0 24 24"
@@ -555,7 +581,7 @@ const StoryPresenter: React.FC<StoryPresenterProps> = ({
                     </svg>
                   ) : (
                     <svg
-                      className="w-6 h-6"
+                      className="w-5 h-5 sm:w-6 sm:h-6"
                       fill="currentColor"
                       viewBox="0 0 20 20"
                     >
@@ -566,12 +592,12 @@ const StoryPresenter: React.FC<StoryPresenterProps> = ({
 
                 <button
                   onClick={toggleMute}
-                  className="p-3 bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 rounded-lg transition "
+                  className="p-2 sm:p-3 bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 rounded-lg transition shrink-0"
                   aria-label={isMuted ? "Unmute" : "Mute"}
                 >
                   {isMuted ? (
                     <svg
-                      className="w-5 h-5"
+                      className="w-4 h-4 sm:w-5 sm:h-5"
                       fill="none"
                       stroke="currentColor"
                       viewBox="0 0 24 24"
@@ -591,7 +617,7 @@ const StoryPresenter: React.FC<StoryPresenterProps> = ({
                     </svg>
                   ) : (
                     <svg
-                      className="w-5 h-5"
+                      className="w-4 h-4 sm:w-5 sm:h-5"
                       fill="none"
                       stroke="currentColor"
                       viewBox="0 0 24 24"
@@ -608,14 +634,14 @@ const StoryPresenter: React.FC<StoryPresenterProps> = ({
 
                 <button
                   onClick={toggleAutoPlay}
-                  className={`px-4 py-3 rounded-lg font-medium transition flex items-center gap-2 ${
+                  className={`px-3 sm:px-4 py-2 sm:py-3 rounded-lg font-medium transition flex items-center gap-2 text-xs sm:text-sm shrink-0 ${
                     autoPlay
                       ? "bg-red-600 hover:bg-red-700 text-white"
-                      : "bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 "
+                      : "bg-slate-100 dark:bg-slate-800 hover:bg-slate-200"
                   }`}
                 >
                   <svg
-                    className="w-4 h-4"
+                    className="w-3 h-3 sm:w-4 sm:h-4"
                     fill="none"
                     stroke="currentColor"
                     viewBox="0 0 24 24"
@@ -627,7 +653,12 @@ const StoryPresenter: React.FC<StoryPresenterProps> = ({
                       d="M13 5l7 7-7 7M5 5l7 7-7 7"
                     />
                   </svg>
-                  {autoPlay ? "Auto-Play ON" : "Auto-Play OFF"}
+                  <span className="hidden sm:inline">
+                    {autoPlay ? "Auto-Play ON" : "Auto-Play OFF"}
+                  </span>
+                  <span className="sm:hidden">
+                    {autoPlay ? "Auto ON" : "Auto OFF"}
+                  </span>
                 </button>
               </>
             )}
@@ -635,11 +666,11 @@ const StoryPresenter: React.FC<StoryPresenterProps> = ({
             <button
               onClick={nextSlide}
               disabled={currentSlide === totalSlides - 1}
-              className="p-3 bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 disabled:opacity-50 disabled:cursor-not-allowed rounded-lg transition "
+              className="p-2 sm:p-3 bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 disabled:opacity-50 disabled:cursor-not-allowed rounded-lg transition shrink-0"
               aria-label="Next slide"
             >
               <svg
-                className="w-6 h-6"
+                className="w-5 h-5 sm:w-6 sm:h-6"
                 fill="none"
                 stroke="currentColor"
                 viewBox="0 0 24 24"

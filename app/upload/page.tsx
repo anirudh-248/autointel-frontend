@@ -1184,7 +1184,7 @@ export default function UploadPage() {
   }
 
   return (
-    <div className="container mx-auto px-4 md:px-16 py-8 md:pt-24">
+    <div className="w-full max-w-7xl mx-auto px-4 py-6 sm:py-8 md:pt-24 overflow-x-hidden">
       {/* Story Presenter Modal */}
       {showStoryPresenter && storyData && (
         <StoryPresenter
@@ -1199,9 +1199,11 @@ export default function UploadPage() {
         />
       )}
 
-      <div className="mb-8">
-        <h1 className="text-4xl font-bold mb-2">Data Analysis Platform</h1>
-        <p className="text-muted-foreground">
+      <div className="mb-6 sm:mb-8">
+        <h1 className="text-2xl sm:text-3xl md:text-4xl font-bold mb-2">
+          Data Analysis Platform
+        </h1>
+        <p className="text-sm sm:text-base text-muted-foreground">
           Connect your data, clean it, and get AI-powered insights
         </p>
       </div>
@@ -1290,9 +1292,9 @@ export default function UploadPage() {
 
       {/* Main Content */}
       {dataset && (
-        <div className="grid lg:grid-cols-3 gap-6">
+        <div className="w-full grid grid-cols-1 lg:grid-cols-3 gap-4 sm:gap-6">
           {/* Left Column - Data View */}
-          <div className="lg:col-span-2 space-y-6">
+          <div className="lg:col-span-2 flex flex-col space-y-4 sm:space-y-6 min-w-0 w-full overflow-hidden">
             {/* Data Cleaning - Only for non-SQL sources */}
             {!isSQLSource && (
               <DataCleaning
@@ -1304,40 +1306,51 @@ export default function UploadPage() {
             )}
 
             {/* Data Display */}
-            <Card className="p-6">
-              <div className="flex items-center justify-between mb-4">
-                <div>
-                  <h2 className="text-xl font-semibold">Dataset View</h2>
-                  <p className="text-sm text-muted-foreground">
+            <Card className="w-full p-4 sm:p-6 overflow-hidden">
+              <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between mb-4 gap-3 w-full">
+                <div className="min-w-0 flex-1">
+                  <h2 className="text-lg sm:text-xl font-semibold truncate">
+                    Dataset View
+                  </h2>
+                  <p className="text-xs sm:text-sm text-muted-foreground break-words">
                     {isSQLSource
                       ? `${dbType.toUpperCase()} Database: ${maskUri(dburi)}`
                       : `${dataset.schema.rowCount} rows × ${dataset.schema.fields.length} columns`}
                   </p>
                 </div>
                 {!isSQLSource && (
-                  <Button variant="outline" size="sm" onClick={resetData}>
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={resetData}
+                    className="shrink-0"
+                  >
                     Reset Data
                   </Button>
                 )}
               </div>
 
-              <Tabs value={activeTab} onValueChange={setActiveTab}>
-                <TabsList className="w-full mb-4">
-                  <TabsTrigger value="table" className="flex-1">
-                    <Table2 className="h-4 w-4 mr-2" />
-                    Table
+              <Tabs
+                value={activeTab}
+                onValueChange={setActiveTab}
+                className="w-full"
+              >
+                <TabsList className="w-full mb-4 flex h-auto p-1 bg-muted rounded-lg overflow-x-auto sm:grid sm:grid-cols-3">
+                  <TabsTrigger value="table" className="flex-1 min-w-[80px]">
+                    <Table2 className="h-4 w-4 mr-1 sm:mr-2 shrink-0" />
+                    <span className="text-xs sm:text-sm truncate">Table</span>
                   </TabsTrigger>
-                  <TabsTrigger value="charts" className="flex-1">
-                    <BarChart3 className="h-4 w-4 mr-2" />
-                    Charts
+                  <TabsTrigger value="charts" className="flex-1 min-w-[80px]">
+                    <BarChart3 className="h-4 w-4 mr-1 sm:mr-2 shrink-0" />
+                    <span className="text-xs sm:text-sm truncate">Charts</span>
                   </TabsTrigger>
-                  <TabsTrigger value="stats" className="flex-1">
-                    <FileText className="h-4 w-4 mr-2" />
-                    Stats
+                  <TabsTrigger value="stats" className="flex-1 min-w-[80px]">
+                    <FileText className="h-4 w-4 mr-1 sm:mr-2 shrink-0" />
+                    <span className="text-xs sm:text-sm truncate">Stats</span>
                   </TabsTrigger>
                 </TabsList>
 
-                <TabsContent value="table">
+                <TabsContent value="table" className="w-full overflow-hidden">
                   {isSQLSource ? (
                     sqlTableData.length > 0 ? (
                       <PreviewTable rows={sqlTableData} columns={sqlColumns} />
@@ -1360,7 +1373,7 @@ export default function UploadPage() {
                   )}
                 </TabsContent>
 
-                <TabsContent value="charts">
+                <TabsContent value="charts" className="w-full overflow-hidden">
                   <VisualizationsTab
                     visualizations={visualizations}
                     selectedVizIds={selectedVizIds}
@@ -1370,7 +1383,7 @@ export default function UploadPage() {
                   />
                 </TabsContent>
 
-                <TabsContent value="stats">
+                <TabsContent value="stats" className="w-full overflow-hidden">
                   <StatsTab
                     dataset={dataset}
                     isSQLSource={isSQLSource}
@@ -1385,7 +1398,7 @@ export default function UploadPage() {
           </div>
 
           {/* Right Column - Chat Assistant */}
-          <div className="lg:col-span-1">
+          <div className="lg:col-span-1 min-w-0 w-full overflow-hidden">
             <ChatAssistant
               messages={messages}
               input={input}

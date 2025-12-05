@@ -85,9 +85,11 @@ export const ChatAssistant: React.FC<ChatAssistantProps> = ({
     SUPPORTED_LANGUAGES[0];
 
   return (
-    <Card className="p-6 sticky top-4">
-      <div className="flex items-center justify-between mb-4">
-        <h2 className="text-xl font-semibold">AI Assistant</h2>
+    <Card className="w-full p-4 sm:p-6 lg:sticky lg:top-4 overflow-hidden">
+      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between mb-4 gap-3 w-full">
+        <h2 className="text-lg sm:text-xl font-semibold truncate min-w-0">
+          AI Assistant
+        </h2>
 
         {/* Language Selector */}
         <div className="relative">
@@ -95,7 +97,7 @@ export const ChatAssistant: React.FC<ChatAssistantProps> = ({
             variant="outline"
             size="sm"
             onClick={() => setShowLanguageSelect(!showLanguageSelect)}
-            className="flex items-center gap-2"
+            className="flex items-center gap-2 w-full sm:w-auto"
             aria-label="Select story language"
           >
             <Languages className="h-4 w-4" />
@@ -235,29 +237,32 @@ export const ChatAssistant: React.FC<ChatAssistantProps> = ({
       )}
 
       {/* Chat Messages */}
-      <div className="flex flex-col h-[600px]">
-        <ScrollArea className="flex-1 mb-4 p-4 border rounded-lg">
+      <div className="flex flex-col h-[400px] sm:h-[500px] lg:h-[600px]">
+        <ScrollArea className="flex-1 mb-4 p-3 sm:p-4 border rounded-lg">
           {messages.map((msg, idx) => (
             <div
               key={idx}
               className={`mb-3 ${
                 msg.role === "assistant"
-                  ? "bg-muted/50 rounded-lg p-3"
-                  : "bg-primary/10 rounded-lg p-3"
+                  ? "bg-muted/50 rounded-lg p-2 sm:p-3"
+                  : "bg-primary/10 rounded-lg p-2 sm:p-3"
               }`}
             >
-              <p className="text-sm whitespace-pre-wrap">{msg.content}</p>
+              <p className="text-xs sm:text-sm whitespace-pre-wrap break-words">
+                {msg.content}
+              </p>
 
               {msg.sqlData && <SQLResultDisplay sqlData={msg.sqlData} />}
 
               {/* Report Download Buttons */}
               {msg.html && (
-                <div className="flex gap-2 mt-2">
+                <div className="flex flex-col sm:flex-row gap-2 mt-2">
                   <Button
                     size="sm"
                     variant="default"
                     onClick={() => onDownloadReport(msg.html!, "pdf")}
                     disabled={downloadLoading}
+                    className="w-full sm:w-auto"
                   >
                     {downloadLoading ? (
                       <Loader2 className="h-3 w-3 mr-1 animate-spin" />
@@ -271,6 +276,7 @@ export const ChatAssistant: React.FC<ChatAssistantProps> = ({
                     variant="outline"
                     onClick={() => onDownloadReport(msg.html!, "html")}
                     disabled={downloadLoading}
+                    className="w-full sm:w-auto"
                   >
                     <Download className="h-3 w-3 mr-1" />
                     Download HTML
@@ -280,7 +286,7 @@ export const ChatAssistant: React.FC<ChatAssistantProps> = ({
             </div>
           ))}
           {loading && (
-            <div className="mb-3 bg-muted/30 rounded-lg p-3 text-sm flex items-center gap-2">
+            <div className="mb-3 bg-muted/30 rounded-lg p-2 sm:p-3 text-xs sm:text-sm flex items-center gap-2">
               <Loader2 className="h-4 w-4 animate-spin" />
               {isSQLSource ? "Querying database..." : "Analyzing your data..."}
             </div>
@@ -299,8 +305,14 @@ export const ChatAssistant: React.FC<ChatAssistantProps> = ({
                 : "Ask about your data..."
             }
             disabled={loading}
+            className="text-sm"
           />
-          <Button onClick={onSendMessage} disabled={loading} size="icon">
+          <Button
+            onClick={onSendMessage}
+            disabled={loading}
+            size="icon"
+            className="shrink-0"
+          >
             {loading ? (
               <Loader2 className="h-4 w-4 animate-spin" />
             ) : (

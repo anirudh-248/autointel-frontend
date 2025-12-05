@@ -168,8 +168,8 @@ export default function PlotlyRenderer({
   }
 
   return (
-    <div className={className || ""}>
-      <Card className="px-4 pt-4 border-none shadow-none ">
+    <div className={`${className || ""} w-full overflow-hidden`}>
+      <Card className="px-4 pt-4 border-none shadow-none w-full overflow-hidden">
         {(title || description) && (
           <div className="mb-4">
             {title && <h3 className="text-lg font-semibold mb-1">{title}</h3>}

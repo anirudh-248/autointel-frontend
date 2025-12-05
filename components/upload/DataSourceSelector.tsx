@@ -21,26 +21,30 @@ export const DataSourceSelector: React.FC<DataSourceSelectorProps> = ({
   }, {} as Record<string, typeof DATA_SOURCES>);
 
   return (
-    <Card className="p-6">
-      <h2 className="text-lg font-semibold mb-4">Choose Data Source</h2>
-      <div className="space-y-4">
+    <Card className="w-full p-4 sm:p-6 overflow-hidden">
+      <h2 className="text-base sm:text-lg font-semibold mb-3 sm:mb-4">
+        Choose Data Source
+      </h2>
+      <div className="space-y-3 sm:space-y-4">
         {Object.entries(groupedSources).map(([category, sources]) => (
           <div key={category}>
-            <p className="text-sm font-medium text-muted-foreground mb-2">
+            <p className="text-xs sm:text-sm font-medium text-muted-foreground mb-2">
               {category}
             </p>
-            <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-6 gap-2">
+            <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-6 gap-2">
               {sources.map((src: any) => {
                 const Icon = src.icon;
                 return (
                   <Button
                     key={src.value}
                     variant={source === src.value ? "default" : "outline"}
-                    className="h-auto py-3 flex flex-col items-center gap-2"
+                    className="h-auto py-2 sm:py-3 flex flex-col items-center gap-1 sm:gap-2"
                     onClick={() => onSourceChange(src.value)}
                   >
-                    <Icon className="h-5 w-5" />
-                    <span className="text-xs">{src.label}</span>
+                    <Icon className="h-4 w-4 sm:h-5 sm:w-5" />
+                    <span className="text-xs leading-tight text-center">
+                      {src.label}
+                    </span>
                   </Button>
                 );
               })}
