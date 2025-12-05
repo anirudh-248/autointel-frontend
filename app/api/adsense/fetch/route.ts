@@ -76,10 +76,22 @@ export async function POST(request: NextRequest) {
     const accountName = accounts[0].name!;
     console.log(`Fetching data for account: ${accountName}`);
 
+    // Calculate date range for last 90 days
+    const endDate = new Date();
+    const startDate = new Date();
+    startDate.setDate(startDate.getDate() - 90);
+
+    const formatDate = (date: Date) => {
+      const year = date.getFullYear();
+      const month = String(date.getMonth() + 1).padStart(2, "0");
+      const day = String(date.getDate()).padStart(2, "0");
+      return `${year}-${month}-${day}`;
+    };
+
     // Fetch report data for last 90 days
     const report = await adsense.accounts.reports.generate({
       account: accountName,
-      dateRange: "LAST_90_DAYS",
+      dateRange: "LAST_90_DAYS" as any,
       dimensions: ["DATE", "AD_UNIT_NAME", "COUNTRY_NAME"],
       metrics: [
         "CLICKS",
@@ -90,7 +102,7 @@ export async function POST(request: NextRequest) {
         "AD_REQUESTS_COVERAGE",
         "PAGE_VIEWS_CTR",
       ],
-    });
+    } as any);
 
     const reportRows = report.data.rows || [];
 
