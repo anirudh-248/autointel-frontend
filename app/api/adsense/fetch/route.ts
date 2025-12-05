@@ -91,17 +91,15 @@ export async function POST(request: NextRequest) {
     // Fetch report data for last 90 days
     const report = await adsense.accounts.reports.generate({
       account: accountName,
-      dateRange: {
-        startDate: {
-          year: startDate.getFullYear(),
-          month: startDate.getMonth() + 1,
-          day: startDate.getDate(),
-        },
-        endDate: {
-          year: endDate.getFullYear(),
-          month: endDate.getMonth() + 1,
-          day: endDate.getDate(),
-        },
+      startDate: {
+        year: startDate.getFullYear(),
+        month: startDate.getMonth() + 1,
+        day: startDate.getDate(),
+      },
+      endDate: {
+        year: endDate.getFullYear(),
+        month: endDate.getMonth() + 1,
+        day: endDate.getDate(),
       },
       dimensions: ["DATE", "AD_UNIT_NAME", "COUNTRY_NAME"],
       metrics: [
