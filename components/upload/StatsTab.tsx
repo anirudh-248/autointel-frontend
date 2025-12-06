@@ -95,9 +95,11 @@ export const StatsTab: React.FC<StatsTabProps> = ({
             <h3 className="font-semibold mb-3">Last Query Schema</h3>
             <div className="space-y-2">
               {sqlColumns.map((col) => (
-                <div key={col} className="flex justify-between text-sm">
-                  <span className="font-medium">{col}</span>
-                  <Badge variant="secondary">column</Badge>
+                <div key={col} className="flex justify-between text-sm gap-2">
+                  <span className="font-medium truncate">{col}</span>
+                  <Badge variant="secondary" className="shrink-0">
+                    column
+                  </Badge>
                 </div>
               ))}
             </div>

@@ -30,7 +30,7 @@ export default function RootLayout({
               disableTransitionOnChange
             >
               <MainNav />
-              <main>{children}</main>
+              <main className="overflow-x-hidden w-full">{children}</main>
             </ThemeProvider>
           </UserProvider>
         </AuthProvider>

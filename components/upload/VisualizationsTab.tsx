@@ -79,13 +79,15 @@ export const VisualizationsTab: React.FC<VisualizationsTabProps> = ({
                 </label>
               </div>
 
-              <PlotlyRenderer
-                data={viz.plotlyData}
-                layout={viz.plotlyLayout}
-                config={viz.plotlyConfig}
-                title={viz.title}
-                description={viz.description}
-              />
+              <div className="w-full overflow-hidden">
+                <PlotlyRenderer
+                  data={viz.plotlyData}
+                  layout={viz.plotlyLayout}
+                  config={viz.plotlyConfig}
+                  title={viz.title}
+                  description={viz.description}
+                />
+              </div>
 
               <div className="flex gap-2 px-4 pb-4">
                 <Button

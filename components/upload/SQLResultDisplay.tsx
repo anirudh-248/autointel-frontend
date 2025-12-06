@@ -27,7 +27,7 @@ export const SQLResultDisplay: React.FC<SQLResultDisplayProps> = ({
   const rows = sqlData.results;
 
   return (
-    <div className="mt-3 space-y-3 max-w-xs">
+    <div className="mt-3 space-y-3 w-full max-w-full overflow-hidden">
       {/* Question */}
       <div className="border-2 rounded-lg p-3">
         <p className="text-xs font-semibold text-black dark:text-white">

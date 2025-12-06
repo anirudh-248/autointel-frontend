@@ -59,26 +59,50 @@ export async function POST(
 
       case "mongodb": {
         sourceName = "MongoDB Database";
+        let client;
 
         try {
           const { MongoClient } = await import("mongodb");
-          const client = new MongoClient(connectionString);
+          client = new MongoClient(connectionString, {
+            serverSelectionTimeoutMS: 10000,
+            connectTimeoutMS: 10000,
+            socketTimeoutMS: 45000,
+          });
 
+          console.log("Connecting to MongoDB...");
           await client.connect();
+          console.log("MongoDB connected successfully");
 
           const adminDb = client.db().admin();
           const dbList = await adminDb.listDatabases();
+          console.log(`Found ${dbList.databases.length} databases`);
 
           const allDocs: any[] = [];
           let totalCollections = 0;
 
           for (const dbInfo of dbList.databases) {
+            // Skip system databases
+            if (["admin", "local", "config"].includes(dbInfo.name)) {
+              continue;
+            }
+
             const db = client.db(dbInfo.name);
             const collections = await db.listCollections().toArray();
+            console.log(
+              `Database '${dbInfo.name}' has ${collections.length} collections`
+            );
 
             for (const colInfo of collections) {
               const col = db.collection(colInfo.name);
+              const count = await col.countDocuments();
+              console.log(
+                `Collection '${colInfo.name}' has ${count} documents`
+              );
+
               const docs = await col.find({}).limit(200).toArray();
+              console.log(
+                `Retrieved ${docs.length} documents from '${colInfo.name}'`
+              );
 
               if (docs.length > 0) {
                 allDocs.push(...docs);
@@ -87,12 +111,43 @@ export async function POST(
             }
           }
 
+          console.log(
+            `Total documents retrieved: ${allDocs.length} from ${totalCollections} collections`
+          );
+
           if (allDocs.length === 0) {
-            return NextResponse.json(
-              { error: "No data found across all databases" },
-              { status: 400 }
-            );
+            // Return empty dataset structure instead of error
+            const emptyDataset = {
+              source: {
+                kind: "mongodb" as const,
+                name: "MongoDB Database",
+                meta: {
+                  connectionString,
+                  uri: connectionString,
+                },
+              },
+              schema: {
+                fields: [],
+                rowCount: 0,
+              },
+              rows: [],
+            };
+
+            await client.close();
+            console.log("MongoDB connection closed - empty database");
+
+            return NextResponse.json({
+              dataset: emptyDataset,
+              totalCollections: 0,
+              totalDocs: 0,
+              warning:
+                "Database connected but no documents found. Please add data to your collections.",
+            });
           }
+
+          console.log(
+            `Retrieved ${allDocs.length} documents from ${totalCollections} collections`
+          );
 
           const baseDataset = mongoToDataset(allDocs);
           const dataset = {
@@ -106,6 +161,10 @@ export async function POST(
               },
             },
           };
+
+          await client.close();
+          console.log("MongoDB connection closed");
+
           return NextResponse.json({
             dataset,
             totalCollections,
@@ -113,8 +172,29 @@ export async function POST(
           });
         } catch (err: any) {
           console.error("MONGODB CONNECT ERROR:", err);
+          if (client) {
+            try {
+              await client.close();
+            } catch (closeErr) {
+              console.error("Error closing MongoDB connection:", closeErr);
+            }
+          }
+
+          // Provide more specific error messages
+          let errorMessage = err.message || "Failed to connect to MongoDB";
+          if (err.message?.includes("ENOTFOUND")) {
+            errorMessage =
+              "Cannot resolve MongoDB host. Check your connection string.";
+          } else if (err.message?.includes("authentication failed")) {
+            errorMessage =
+              "Authentication failed. Check your username and password.";
+          } else if (err.message?.includes("timed out")) {
+            errorMessage =
+              "Connection timed out. Check your network or MongoDB Atlas whitelist.";
+          }
+
           return NextResponse.json(
-            { error: err.message || "Failed to connect to MongoDB" },
+            { error: errorMessage, details: err.message },
             { status: 500 }
           );
         }

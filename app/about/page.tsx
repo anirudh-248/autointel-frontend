@@ -57,27 +57,32 @@ export default function AboutPage() {
         <h1 className="text-4xl font-bold text-center mb-6">About AutoIntel</h1>
         <div className="max-w-3xl mx-auto text-center">
           <p className="text-xl text-muted-foreground mb-8">
-            Founded in 2025, AutoIntel AI is revolutionizing how businesses
+            Founded in 2025, AutoIntel is revolutionizing how businesses
             understand and utilize their data. Our platform combines
             cutting-edge AI technology with intuitive design to make data
-            analysis accessible to everyone.
+            analysis accessible to everyone—transforming natural language
+            questions into instant, actionable insights.
           </p>
           <div className="grid grid-cols-2 md:grid-cols-4 gap-8 text-center">
             <div>
-              <h3 className="text-3xl font-bold text-primary mb-2">50K+</h3>
-              <p className="text-muted-foreground">Active Users</p>
+              <h3 className="text-3xl font-bold text-primary mb-2">
+                AI-Powered
+              </h3>
+              <p className="text-muted-foreground">Natural Language Queries</p>
             </div>
             <div>
-              <h3 className="text-3xl font-bold text-primary mb-2">100M+</h3>
-              <p className="text-muted-foreground">Datasets Analyzed</p>
+              <h3 className="text-3xl font-bold text-primary mb-2">Multi-DB</h3>
+              <p className="text-muted-foreground">Universal Compatibility</p>
             </div>
             <div>
-              <h3 className="text-3xl font-bold text-primary mb-2">98%</h3>
-              <p className="text-muted-foreground">Customer Satisfaction</p>
+              <h3 className="text-3xl font-bold text-primary mb-2">
+                Zero Code
+              </h3>
+              <p className="text-muted-foreground">Required to Analyze</p>
             </div>
             <div>
-              <h3 className="text-3xl font-bold text-primary mb-2">24/7</h3>
-              <p className="text-muted-foreground">Support</p>
+              <h3 className="text-3xl font-bold text-primary mb-2">Instant</h3>
+              <p className="text-muted-foreground">Insights & Reports</p>
             </div>
           </div>
         </div>
