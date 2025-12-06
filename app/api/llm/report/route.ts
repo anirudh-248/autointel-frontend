@@ -1,56 +1,221 @@
 import { NextRequest, NextResponse } from "next/server";
 import { DataSet, LLMReportResponse } from "@/lib/types";
 
-export async function POST(request: NextRequest) {
-  try {
-    const { dataset, query, config, selectedVisualizations } =
-      await request.json();
+// Chunking constants
+const MAX_ROWS_PER_CHUNK = 50;
+const MAX_COLUMNS_PER_CHUNK = 20;
+const MAX_CHUNKS_TO_PROCESS = 10;
+const SAMPLE_SIZE_FOR_LARGE_DATASETS = 500;
 
-    if (!dataset || !config?.apiKey) {
-      return NextResponse.json(
-        { error: "Missing required fields" },
-        { status: 400 }
-      );
+function estimateTokens(text: string): number {
+  return Math.ceil(text.length / 4);
+}
+
+function chunkDataset(dataset: DataSet) {
+  const totalRows = dataset.rows.length;
+  const totalCols = dataset.schema.fields.length;
+
+  if (totalRows <= MAX_ROWS_PER_CHUNK && totalCols <= MAX_COLUMNS_PER_CHUNK) {
+    return [{ dataset, isChunked: false }];
+  }
+
+  // For extremely large datasets, use sampling
+  if (totalRows > SAMPLE_SIZE_FOR_LARGE_DATASETS) {
+    console.log(
+      `Dataset has ${totalRows} rows. Sampling ${SAMPLE_SIZE_FOR_LARGE_DATASETS} rows for report generation.`
+    );
+    const sampledRows = [];
+    const sampleInterval = Math.floor(
+      totalRows / SAMPLE_SIZE_FOR_LARGE_DATASETS
+    );
+    for (let i = 0; i < totalRows; i += sampleInterval) {
+      sampledRows.push(dataset.rows[i]);
+      if (sampledRows.length >= SAMPLE_SIZE_FOR_LARGE_DATASETS) break;
     }
+    dataset = {
+      ...dataset,
+      rows: sampledRows,
+      schema: {
+        ...dataset.schema,
+        rowCount: sampledRows.length,
+      },
+    };
+  }
 
-    const schemaSummary = dataset.schema.fields
-      .map((f: any) => `- ${f.name} (${f.type})`)
-      .join("\n");
+  // Recalculate after sampling
+  const actualRows = dataset.rows.length;
+  const actualCols = dataset.schema.fields.length;
 
-    const sampleData = dataset.schema.sampleRows || dataset.rows.slice(0, 10);
+  // Check again after sampling
+  if (actualRows <= MAX_ROWS_PER_CHUNK && actualCols <= MAX_COLUMNS_PER_CHUNK) {
+    return [{ dataset, isChunked: false }];
+  }
 
-    const reportQuery =
-      query ||
-      "Generate a detailed, comprehensive analytical report of this dataset";
+  const chunks: any[] = [];
+  const numRowChunks = Math.ceil(actualRows / MAX_ROWS_PER_CHUNK);
+  const numColChunks = Math.ceil(actualCols / MAX_COLUMNS_PER_CHUNK);
 
-    const systemPrompt = `You are a data analyst creating professional reports. Generate a comprehensive HTML report based on the dataset.
+  console.log(
+    `Chunking dataset for report: ${numRowChunks} row chunks × ${numColChunks} column chunks = ${
+      numRowChunks * numColChunks
+    } total chunks`
+  );
+
+  for (let colChunk = 0; colChunk < numColChunks; colChunk++) {
+    const colStart = colChunk * MAX_COLUMNS_PER_CHUNK;
+    const colEnd = Math.min(colStart + MAX_COLUMNS_PER_CHUNK, actualCols);
+    const fieldsChunk = dataset.schema.fields.slice(colStart, colEnd);
+
+    for (let rowChunk = 0; rowChunk < numRowChunks; rowChunk++) {
+      const rowStart = rowChunk * MAX_ROWS_PER_CHUNK;
+      const rowEnd = Math.min(rowStart + MAX_ROWS_PER_CHUNK, actualRows);
+      const rowsChunk = dataset.rows.slice(rowStart, rowEnd);
+
+      const filteredRows = rowsChunk.map((row: any) => {
+        const newRow: any = {};
+        fieldsChunk.forEach((field: any) => {
+          newRow[field.name] = row[field.name];
+        });
+        return newRow;
+      });
+
+      chunks.push({
+        dataset: {
+          schema: {
+            ...dataset.schema,
+            fields: fieldsChunk,
+            rowCount: filteredRows.length,
+          },
+          rows: filteredRows,
+        },
+        isChunked: true,
+        chunkInfo: {
+          rowRange: `${rowStart + 1}-${rowEnd}`,
+          colRange: `${colStart + 1}-${colEnd}`,
+          totalRows: actualRows,
+          totalCols: actualCols,
+        },
+      });
+    }
+  }
+
+  return chunks;
+}
+
+async function generateChunkReport(
+  dataset: DataSet,
+  query: string,
+  config: any,
+  selectedVisualizations?: string[],
+  chunkInfo?: any
+): Promise<string> {
+  const schemaSummary = dataset.schema.fields
+    .map((f: any) => `- ${f.name} (${f.type})`)
+    .join("\n");
+
+  const sampleData = dataset.schema.sampleRows || dataset.rows.slice(0, 10);
+
+  const reportQuery =
+    query ||
+    "Generate a detailed, comprehensive analytical report of this dataset";
+
+  const chunkContext = chunkInfo
+    ? `\n\nNOTE: This is a chunk of a larger dataset (rows ${chunkInfo.rowRange}, columns ${chunkInfo.colRange} out of ${chunkInfo.totalRows} total rows and ${chunkInfo.totalCols} total columns). Focus your analysis on this subset.`
+    : "";
+
+  const systemPrompt = `You are a data analyst creating professional report sections. Generate a detailed analytical section based on this dataset chunk.
+
 Selected Visualizations: ${
-      selectedVisualizations && selectedVisualizations.length > 0
-        ? selectedVisualizations.join(", ")
-        : "None"
-    }.
-Use Chart.js for charts. Ensure charts are compatible with PDF rendering as per instructions.;
-
-You must include the selected visualizations in the report. If none are selected, choose appropriate visualizations based on the data.
+    selectedVisualizations && selectedVisualizations.length > 0
+      ? selectedVisualizations.join(", ")
+      : "None"
+  }.
 
 The dataset is provided in JSON format with the following schema:
 Dataset Schema:
 ${schemaSummary}
 
-Total rows: ${dataset.schema.rowCount}
+Total rows in this chunk: ${dataset.schema.rowCount}${chunkContext}
 
 Sample data:
 ${JSON.stringify(sampleData, null, 2)}
 
-Create a very detailed beautiful HTML report that includes:
-1. Executive Summary
-2. Data Overview (schema, row counts, data types)
-3. Key Findings and Insights
-4. Statistical Analysis
-5. Trends and Patterns
-6. Recommendations
-7. Interactive charts and visualizations using Chart.js to summarize the dataset, with observations and inferences drawn
-8. Watermark the HTML with the name AutoIntel and the time of generation
+Create detailed analysis sections that include:
+1. Data Overview for this chunk (schema, row counts, data types)
+2. Key Findings and Insights
+3. Statistical Analysis
+4. Trends and Patterns observed in this data subset
+5. Chart specifications (but do NOT include full HTML - just describe what charts would be useful)
+
+Return your analysis as structured text with clear section headers. Focus on insights, patterns, and statistical findings.`;
+
+  const messages = [
+    { role: "system", content: systemPrompt },
+    { role: "user", content: reportQuery },
+  ];
+
+  const response = await fetch(
+    "https://openrouter.ai/api/v1/chat/completions",
+    {
+      method: "POST",
+      headers: {
+        Authorization: `Bearer ${config.apiKey}`,
+        "Content-Type": "application/json",
+        "HTTP-Referer": config.referer || "https://your-app.com",
+        "X-Title": config.title || "Data Analysis App",
+      },
+      body: JSON.stringify({
+        model: config.model || "x-ai/grok-4-fast",
+        messages,
+      }),
+    }
+  );
+
+  if (!response.ok) {
+    const error = await response.text();
+    throw new Error(`OpenRouter API error: ${error}`);
+  }
+
+  const data = await response.json();
+  return data.choices[0]?.message?.content || "";
+}
+
+async function unifyReportSections(
+  chunkReports: string[],
+  dataset: DataSet,
+  query: string,
+  config: any,
+  selectedVisualizations?: string[]
+): Promise<string> {
+  const unificationPrompt = `You are a data analyst creating a comprehensive professional HTML report. Multiple analyses have been performed on different chunks of a large dataset. Your task is to synthesize these into a single, cohesive, beautifully formatted HTML report.
+
+User's original request: ${
+    query || "Generate a comprehensive analytical report"
+  }
+
+Chunk analyses:
+${chunkReports
+  .map(
+    (report, idx) => `
+=== Chunk ${idx + 1} Analysis ===
+${report}
+`
+  )
+  .join("\n")}
+
+Dataset Overview:
+- Total rows: ${dataset.schema.rowCount}
+- Total columns: ${dataset.schema.fields.length}
+- Columns: ${dataset.schema.fields.map((f: any) => f.name).join(", ")}
+
+Create a comprehensive HTML report that includes:
+1. Executive Summary (synthesized from all chunks)
+2. Data Overview (full dataset schema, row counts, data types)
+3. Key Findings and Insights (combined from all chunks)
+4. Statistical Analysis (aggregated insights)
+5. Trends and Patterns (identified across the entire dataset)
+6. Recommendations (based on complete analysis)
+7. Interactive charts using Chart.js
 
 CRITICAL CHART RENDERING INSTRUCTIONS:
 - For PDF compatibility, wrap ALL chart initialization code in a DOMContentLoaded event listener
@@ -65,7 +230,6 @@ CRITICAL CHART RENDERING INSTRUCTIONS:
 And at the end of the document, inside a single script tag:
 <script>
 document.addEventListener('DOMContentLoaded', function() {
-  // Wait for Chart.js to load
   if (typeof Chart !== 'undefined') {
     const ctx1 = document.getElementById('uniqueChartId').getContext('2d');
     new Chart(ctx1, {
@@ -82,59 +246,112 @@ document.addEventListener('DOMContentLoaded', function() {
       },
       options: {
         responsive: true,
-        maintainAspectRatio: false,
-        plugins: {
-          legend: { display: true },
-          title: { display: true, text: 'Chart Title' }
-        }
+        maintainAspectRatio: false
       }
     });
-    
-    // More charts follow the same pattern
   }
 });
 </script>
 
-Format the response as valid HTML that can be converted to PDF. Use proper semantic HTML with headers, paragraphs, tables, and lists. Make it professional and well-structured.
+Return ONLY the HTML body content (no <!DOCTYPE>, <html>, <head>, or <body> tags - just the inner content).`;
 
-Return ONLY the HTML content (no markdown code blocks, just pure HTML).`;
+  const response = await fetch(
+    "https://openrouter.ai/api/v1/chat/completions",
+    {
+      method: "POST",
+      headers: {
+        Authorization: `Bearer ${config.apiKey}`,
+        "Content-Type": "application/json",
+        "HTTP-Referer": config.referer || "https://your-app.com",
+        "X-Title": config.title || "Data Analysis App",
+      },
+      body: JSON.stringify({
+        model: config.model || "x-ai/grok-4-fast",
+        messages: [{ role: "user", content: unificationPrompt }],
+        temperature: 0.7,
+      }),
+    }
+  );
 
-    const messages = [
-      { role: "system", content: systemPrompt },
-      { role: "user", content: reportQuery },
-    ];
+  if (!response.ok) {
+    const error = await response.text();
+    throw new Error(`Unification API error: ${error}`);
+  }
 
-    const response = await fetch(
-      "https://openrouter.ai/api/v1/chat/completions",
-      {
-        method: "POST",
-        headers: {
-          Authorization: `Bearer ${config.apiKey}`,
-          "Content-Type": "application/json",
-          "HTTP-Referer": config.referer || "https://your-app.com",
-          "X-Title": config.title || "Data Analysis App",
-        },
-        body: JSON.stringify({
-          model: config.model || "x-ai/grok-4-fast",
-          messages,
-        }),
-      }
+  const data = await response.json();
+  let htmlContent = data.choices[0]?.message?.content || "";
+
+  // Remove markdown code blocks if present
+  htmlContent = htmlContent.replace(/```html\s*/g, "").replace(/```\s*$/g, "");
+
+  return htmlContent;
+}
+
+async function generateReportWithUnification(
+  chunks: any[],
+  query: string,
+  config: any,
+  selectedVisualizations?: string[]
+): Promise<string> {
+  if (chunks.length === 1) {
+    return generateChunkReport(
+      chunks[0].dataset,
+      query,
+      config,
+      selectedVisualizations
     );
+  }
 
-    if (!response.ok) {
-      const error = await response.text();
-      throw new Error(`OpenRouter API error: ${error}`);
+  console.log(`Generating report from ${chunks.length} chunks in parallel`);
+
+  // Generate reports for all chunks in parallel
+  const chunkReports = await Promise.all(
+    chunks.map((chunk) =>
+      generateChunkReport(
+        chunk.dataset,
+        query,
+        config,
+        selectedVisualizations,
+        chunk.chunkInfo
+      )
+    )
+  );
+
+  // Unify all reports into a single comprehensive report
+  return unifyReportSections(
+    chunkReports,
+    chunks[0].dataset,
+    query,
+    config,
+    selectedVisualizations
+  );
+}
+
+export async function POST(request: NextRequest) {
+  try {
+    const { dataset, query, config, selectedVisualizations } =
+      await request.json();
+
+    if (!dataset || !config?.apiKey) {
+      return NextResponse.json(
+        { error: "Missing required fields" },
+        { status: 400 }
+      );
     }
 
-    const data = await response.json();
-    let htmlContent = data.choices[0]?.message?.content || "";
+    // Chunk the dataset if needed
+    const chunks = chunkDataset(dataset);
+    console.log(`Processing ${chunks.length} chunk(s) for report generation`);
 
-    // Remove markdown code blocks if present
-    htmlContent = htmlContent
-      .replace(/```html\s*/g, "")
-      .replace(/```\s*$/g, "");
+    // Generate report with chunking support
+    let htmlContent = await generateReportWithUnification(
+      chunks,
+      query,
+      config,
+      selectedVisualizations
+    );
 
-    // Wrap in basic HTML structure if not present
+    // Wrap in full HTML structure
     if (!htmlContent.includes("<!DOCTYPE") && !htmlContent.includes("<html")) {
       const currentDate = new Date().toLocaleString();
       htmlContent = `<!DOCTYPE html>
@@ -144,6 +361,9 @@ Return ONLY the HTML content (no markdown code blocks, just pure HTML).`;
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Data Analysis Report - AutoIntel</title>
     <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
+    <style>
+        * {
+            margin: 0;
     <style>
         * {
             margin: 0;
