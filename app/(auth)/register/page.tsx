@@ -40,7 +40,7 @@ export default function Register() {
             "Content-Type": "application/json",
           },
           body: JSON.stringify({ name, email, password }),
-        }
+        },
       );
 
       const data = await response.json();
@@ -63,9 +63,9 @@ export default function Register() {
   };
 
   return (
-    <div className="flex min-h-screen items-center justify-center px-4 py-24">
-      <Card className="w-full max-w-md p-8">
-        <div className="mb-8 text-center">
+    <div className="flex w-full items-center justify-center px-4">
+      <Card className="w-full max-w-md p-6 sm:p-8">
+        <div className="mb-5 text-center">
           <h2 className="text-3xl font-bold tracking-tight">
             Create an account
           </h2>
@@ -74,7 +74,7 @@ export default function Register() {
           </p>
         </div>
 
-        <form onSubmit={handleSubmit} className="space-y-6">
+        <form onSubmit={handleSubmit} className="space-y-4">
           <div className="space-y-2">
             <Label htmlFor="name">Full Name</Label>
             <Input
@@ -166,7 +166,7 @@ export default function Register() {
           </Button>
         </form>
 
-        <p className="mt-6 text-center text-sm text-muted-foreground">
+        <p className="mt-4 text-center text-sm text-muted-foreground">
           Already have an account?{" "}
           <Link
             href="/login"

@@ -222,7 +222,6 @@ export default function VerifyOtp(): JSX.Element {
 
       <SuccessModal
         show={showSuccessModal}
-        onClose={() => setShowSuccessModal(false)}
         message={successMessage}
       />
     </div>

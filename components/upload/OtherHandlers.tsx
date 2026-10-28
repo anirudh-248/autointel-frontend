@@ -54,7 +54,7 @@ export function JsonHandler({ onDataLoaded, onError }: any) {
       const dataset = DataProcessor.createDataSet(
         rows,
         "json" as any,
-        file.name
+        file.name,
       );
       onDataLoaded(dataset);
     } catch (err: any) {
@@ -180,7 +180,7 @@ export function TextPdfHandler({
         const errorData = await indexResponse.json().catch(() => ({}));
         console.error("[Upload] Index failed:", errorData);
         throw new Error(
-          errorData?.details || errorData?.error || "Failed to index document"
+          errorData?.details || errorData?.error || "Failed to index document",
         );
       }
 

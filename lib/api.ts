@@ -25,7 +25,7 @@ export async function apiFetch<T = any>(
     body?: any;
     isForm?: boolean;
     signal?: AbortSignal;
-  } = {}
+  } = {},
 ): Promise<T> {
   const url = `${API_BASE}${path}`;
   const token = getAccessToken();
@@ -41,8 +41,8 @@ export async function apiFetch<T = any>(
     body: opts.isForm
       ? opts.body
       : opts.body
-      ? JSON.stringify(opts.body)
-      : undefined,
+        ? JSON.stringify(opts.body)
+        : undefined,
     signal: opts.signal,
     credentials: "include",
   });
@@ -75,8 +75,7 @@ export async function loginUser(body: { email: string; password: string }) {
   try {
     const parsed = JSON.parse(resp as unknown as string);
     setTokens(parsed.access_token, parsed.refresh_token);
-  } catch {
-  }
+  } catch {}
   return resp;
 }
 
@@ -87,7 +86,7 @@ export async function verifyOtp(body: { otp: string; session_id: string }) {
 export async function resendOtp(session_id: string) {
   return apiFetch<string>(
     `/resend-otp?session_id=${encodeURIComponent(session_id)}`,
-    { method: "POST" }
+    { method: "POST" },
   );
 }
 
@@ -108,14 +107,21 @@ export async function getUserInfo() {
 
 export async function updateUserInfo(
   params: Record<string, string | number | boolean | null | undefined>,
-  file?: File
+  file?: File,
 ) {
-  const form = new FormData();
+  const query = new URLSearchParams();
   Object.entries(params).forEach(([k, v]) => {
-    if (v !== undefined && v !== null) form.append(k, String(v));
+    if (v !== undefined && v !== null) query.set(k, String(v));
   });
-  if (file) form.append("profile_pic", file);
-  return apiFetch<string>("/user", {
+
+  const path = query.toString() ? `/user?${query.toString()}` : "/user";
+  if (!file) {
+    return apiFetch<string>(path, { method: "PUT" });
+  }
+
+  const form = new FormData();
+  form.append("profile_pic", file);
+  return apiFetch<string>(path, {
     method: "PUT",
     body: form,
     isForm: true,
@@ -129,7 +135,7 @@ export async function deleteUser() {
 export async function queryPostgres(question: string) {
   return apiFetch<string>(
     `/postgresql?question=${encodeURIComponent(question)}`,
-    { method: "POST" }
+    { method: "POST" },
   );
 }
 

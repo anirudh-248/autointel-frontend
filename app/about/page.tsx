@@ -7,7 +7,7 @@ const teamMembers = [
     name: "Anirudh P S",
     role: "Co-Founder and Developer",
     image: "https://placehold.co/600x400",
-    bio: "Undergraduate student at RNSIT, Data Scientiest with experience in working on AI platforms.",
+    bio: "Undergraduate student at RNSIT, Full-stack and AI engineer with a passion for building innovative solutions.",
     social: {
       linkedin: "https://www.linkedin.com/in/anirudh248 ",
       github: "https://github.com/Anirudh-248",
@@ -29,9 +29,9 @@ const teamMembers = [
     name: "Pranav Keshav",
     role: "Co-Founder and Developer",
     image: "https://placehold.co/600x400",
-    bio: "Undergraduate student at RNSIT, an experienced full stack engineer and an AI entusiast.",
+    bio: "Undergraduate student at RNSIT, an experienced full stack engineer and an AI enthusiast.",
     social: {
-      linkedin: "www.linkedin.com/in/pranav-keshav-271a19183",
+      linkedin: "https://www.linkedin.com/in/pranav-keshav-271a19183",
       github: "https://github.com/PranavKeshav24",
       email: "pranavkeshav.connect@gmail.com",
     },
@@ -54,35 +54,49 @@ export default function AboutPage() {
     <div className="min-h-screen py-28 px-6 md:px-12">
       {/* Company Introduction */}
       <section className="container mx-auto px-4 mb-20">
-        <h1 className="text-4xl font-bold text-center mb-6">About AutoIntel</h1>
+        <h1 className="text-3xl font-bold text-center mb-6 md:text-4xl">
+          About AutoIntel
+        </h1>
         <div className="max-w-3xl mx-auto text-center">
-          <p className="text-xl text-muted-foreground mb-8">
+          <p className="text-base text-muted-foreground mb-8 md:text-lg">
             Founded in 2025, AutoIntel is revolutionizing how businesses
             understand and utilize their data. Our platform combines
             cutting-edge AI technology with intuitive design to make data
-            analysis accessible to everyone—transforming natural language
+            analysis accessible to everyone, transforming natural language
             questions into instant, actionable insights.
           </p>
           <div className="grid grid-cols-2 md:grid-cols-4 gap-8 text-center">
             <div>
-              <h3 className="text-3xl font-bold text-primary mb-2">
+              <h3 className="whitespace-nowrap text-xl font-bold text-primary mb-2 md:text-2xl">
                 AI-Powered
               </h3>
-              <p className="text-muted-foreground">Natural Language Queries</p>
+              <p className="text-sm text-muted-foreground md:text-base">
+                Natural Language Queries
+              </p>
             </div>
             <div>
-              <h3 className="text-3xl font-bold text-primary mb-2">Multi-DB</h3>
-              <p className="text-muted-foreground">Universal Compatibility</p>
+              <h3 className="whitespace-nowrap text-xl font-bold text-primary mb-2 md:text-2xl">
+                Multi-DB
+              </h3>
+              <p className="text-sm text-muted-foreground md:text-base">
+                Universal Compatibility
+              </p>
             </div>
             <div>
-              <h3 className="text-3xl font-bold text-primary mb-2">
+              <h3 className="whitespace-nowrap text-xl font-bold text-primary mb-2 md:text-2xl">
                 Zero Code
               </h3>
-              <p className="text-muted-foreground">Required to Analyze</p>
+              <p className="text-sm text-muted-foreground md:text-base">
+                Required to Analyze
+              </p>
             </div>
             <div>
-              <h3 className="text-3xl font-bold text-primary mb-2">Instant</h3>
-              <p className="text-muted-foreground">Insights & Reports</p>
+              <h3 className="whitespace-nowrap text-xl font-bold text-primary mb-2 md:text-2xl">
+                Instant
+              </h3>
+              <p className="text-sm text-muted-foreground md:text-base">
+                Insights & Reports
+              </p>
             </div>
           </div>
         </div>
@@ -90,7 +104,9 @@ export default function AboutPage() {
 
       {/* Team Section */}
       <section className="container mx-auto px-4">
-        <h2 className="text-3xl font-bold text-center mb-12">Meet Our Team</h2>
+        <h2 className="text-2xl font-bold text-center mb-12 md:text-3xl">
+          Meet Our Team
+        </h2>
         <div className="grid md:grid-cols-2 lg:grid-cols-4 gap-8">
           {teamMembers.map((member) => (
             <div
@@ -103,9 +119,15 @@ export default function AboutPage() {
                 className="w-full h-64 object-cover"
               />
               <div className="p-6">
-                <h3 className="text-xl font-semibold mb-1">{member.name}</h3>
-                <p className="text-primary mb-3">{member.role}</p>
-                <p className="text-muted-foreground mb-4">{member.bio}</p>
+                <h3 className="text-lg font-semibold mb-1 md:text-xl">
+                  {member.name}
+                </h3>
+                <p className="text-sm text-primary mb-3 md:text-base">
+                  {member.role}
+                </p>
+                <p className="text-sm text-muted-foreground mb-4 md:text-base">
+                  {member.bio}
+                </p>
                 <div className="flex gap-2">
                   <Link href={member.social.linkedin}>
                     <Button variant="ghost" size="icon">

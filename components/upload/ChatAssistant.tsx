@@ -85,7 +85,7 @@ export const ChatAssistant: React.FC<ChatAssistantProps> = ({
     SUPPORTED_LANGUAGES[0];
 
   return (
-    <Card className="w-full p-4 sm:p-6 lg:sticky lg:top-4 overflow-hidden">
+    <Card className="w-full min-w-0 p-4 sm:p-6 lg:sticky lg:top-4 overflow-x-auto">
       <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between mb-4 gap-3 w-full">
         <h2 className="text-lg sm:text-xl font-semibold truncate min-w-0">
           AI Assistant
@@ -238,17 +238,20 @@ export const ChatAssistant: React.FC<ChatAssistantProps> = ({
 
       {/* Chat Messages */}
       <div className="flex flex-col h-[400px] sm:h-[500px] lg:h-[600px]">
-        <ScrollArea className="flex-1 mb-4 p-3 sm:p-4 border rounded-lg">
+        <ScrollArea
+          horizontal
+          className="flex-1 mb-4 p-3 sm:p-4 border rounded-lg overflow-x-auto"
+        >
           {messages.map((msg, idx) => (
             <div
               key={idx}
-              className={`mb-3 ${
+              className={`mb-3 min-w-0 ${
                 msg.role === "assistant"
                   ? "bg-muted/50 rounded-lg p-2 sm:p-3"
                   : "bg-primary/10 rounded-lg p-2 sm:p-3"
               }`}
             >
-              <p className="text-xs sm:text-sm whitespace-pre-wrap break-words">
+              <p className="text-xs sm:text-sm whitespace-pre-wrap break-normal max-w-full">
                 {msg.content}
               </p>
 

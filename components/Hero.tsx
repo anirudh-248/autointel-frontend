@@ -49,8 +49,8 @@ export default function Hero() {
               </div>
             </motion.h1>
             <p className="text-sm sm:text-md lg:text-md text-muted-foreground mb-8 max-w-screen-sm mx-auto">
-              Upload your CSV, Excel, or Google Sheets data and get instant
-              analysis, visualizations, and AI-powered insights.
+              Upload your spreadsheets, connect to your databases or APIs, and
+              get instant analysis, visualizations, and AI-powered insights.
             </p>
             <div className="flex flex-col sm:flex-row gap-4 justify-center">
               <Link href="/upload">

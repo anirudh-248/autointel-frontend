@@ -27,7 +27,7 @@ export default function FeaturesSection() {
     {
       title: "Data Blending",
       description:
-        "Combine data from Sheets, MySQL, APIs—no complex joins needed.",
+        "Combine data from Sheets, SQL Databases, and APIs easily, without any complex joins.",
       area: "top3",
       color: "bg-indigo-600 text-white",
       border: "rounded-r-2xl rounded-bl-xl",

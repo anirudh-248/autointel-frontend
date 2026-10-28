@@ -29,8 +29,8 @@ export default function CTA() {
           </h2>
 
           <p className="mt-4 text-gray-600 dark:text-gray-300 text-md leading-relaxed">
-            Upload your spreadsheets or connect your favorite tools. Visualize
-            trends, uncover insights, and take action — all powered by AI.
+            Upload your spreadsheets or connect your favorite tools to visualize
+            trends, uncover insights, and take action with the power of AI.
           </p>
 
           <div className="inline-flex mt-8">

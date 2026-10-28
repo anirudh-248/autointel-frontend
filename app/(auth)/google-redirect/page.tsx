@@ -194,10 +194,6 @@ export default function GoogleRedirectPage() {
       {/* Success Modal */}
       <SuccessModal
         show={showSuccessModal}
-        onClose={() => {
-          setShowSuccessModal(false);
-          router.push("/");
-        }}
         message={successMessage}
       />
     </>

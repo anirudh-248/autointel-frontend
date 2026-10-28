@@ -16,6 +16,7 @@ import { Alert, AlertDescription } from "@/components/ui/alert";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import {
   AlertCircle,
+  CheckCircle2,
   Table2,
   BarChart3,
   FileText,
@@ -26,7 +27,6 @@ import MongoOverview from "@/components/upload/MongoOverview";
 import { getUserInfo } from "@/lib/api";
 import { useRouter } from "next/navigation";
 
-import { ApiKeyConfig } from "@/components/upload/APIKeyConfig";
 import { AdSenseBanner } from "@/components/upload/AdSenseBanner";
 import { DataSourceSelector } from "@/components/upload/DataSourceSelector";
 import { DataSourceInput } from "@/components/upload/DataSourceInput";
@@ -90,7 +90,7 @@ export default function UploadPage() {
     Array<{ id: string; title: string; content: string; html: string }>
   >([]);
   const [selectedReportIds, setSelectedReportIds] = useState<Set<string>>(
-    new Set()
+    new Set(),
   );
 
   // Custom hooks
@@ -110,6 +110,15 @@ export default function UploadPage() {
         const res = await getUserInfo();
         const data = typeof res === "string" ? JSON.parse(res as any) : res;
         setUserInfo(data.data);
+        if (data.data?.openrouter_api_key) {
+          setOpenRouterKey(data.data.openrouter_api_key);
+        }
+        if (data.data?.openrouter_model_name) {
+          setModelName(data.data.openrouter_model_name);
+        }
+        if (data.data?.openrouter_base_url) {
+          setBaseURL(data.data.openrouter_base_url);
+        }
         setIsCheckingAuth(false);
       } catch (err) {
         console.log("Failed to authenticate user:", err);
@@ -128,7 +137,7 @@ export default function UploadPage() {
       } else {
         // Set default from env
         setModelName(
-          process.env.NEXT_PUBLIC_OPENROUTER_MODEL || "x-ai/grok-4-fast"
+          process.env.NEXT_PUBLIC_OPENROUTER_MODEL || "x-ai/grok-4-fast",
         );
       }
 
@@ -325,29 +334,12 @@ export default function UploadPage() {
     setError(err);
   };
 
-  const saveApiKey = () => {
-    try {
-      localStorage.setItem("OPENROUTER_API_KEY", openRouterKey);
-      localStorage.setItem("OPENROUTER_MODEL_NAME", modelName);
-      localStorage.setItem("OPENROUTER_BASE_URL", baseURL);
-      setError("");
-      setMessages([
-        {
-          role: "assistant",
-          content: `✓ API configuration saved successfully! Using model: ${modelName} at ${baseURL}`,
-        },
-      ]);
-    } catch {
-      setError("Failed to save API configuration");
-    }
-  };
-
   const applyCleaning = () => {
     if (!originalDataset) return;
 
     const cleaned = DataProcessor.applyCleaningOptions(
       originalDataset,
-      cleaningOptions
+      cleaningOptions,
     );
     setDataset(cleaned);
     setMessages((prev) => [
@@ -445,7 +437,7 @@ export default function UploadPage() {
                     ? part.slice(0, 2) +
                       "*".repeat(Math.min(part.length - 2, 3))
                     : "***"
-                  : ""
+                  : "",
               )
               .join("/")
           : "";
@@ -460,7 +452,7 @@ export default function UploadPage() {
 
   const loadExistingConnection = async (
     dbType: string,
-    connectionString: string
+    connectionString: string,
   ) => {
     setDburi(connectionString);
     setDbType(dbType);
@@ -546,7 +538,7 @@ export default function UploadPage() {
       const isVisualizationRequest =
         /visuali[sz]ation|chart|graph|plot|show.*data/i.test(userMessage);
       const isStoryRequest = /story|presentation|ppt|powerpoint|narrate/i.test(
-        userMessage
+        userMessage,
       );
 
       if (isStoryRequest) {
@@ -1193,7 +1185,7 @@ export default function UploadPage() {
           slides={storyData.slides}
           pptxData={storyData.pptxData}
           visualizations={visualizations.filter((viz) =>
-            selectedVizIds.has(viz.id)
+            selectedVizIds.has(viz.id),
           )}
           onClose={() => setShowStoryPresenter(false)}
         />
@@ -1208,24 +1200,25 @@ export default function UploadPage() {
         </p>
       </div>
 
-      {/* API Key Section */}
-      <div className="mb-6">
-        <ApiKeyConfig
-          apiKey={openRouterKey}
-          modelName={modelName}
-          baseURL={baseURL}
-          onApiKeyChange={setOpenRouterKey}
-          onModelNameChange={setModelName}
-          onBaseURLChange={setBaseURL}
-          onSave={saveApiKey}
-        />
-      </div>
-
       {/* AdSense Authentication Success Banner */}
       <AdSenseBanner
         show={showAdSenseBanner}
         onClose={() => setShowAdSenseBanner(false)}
       />
+
+      <Alert className="mb-6 border-blue-200 bg-blue-50 text-blue-900 dark:border-blue-900 dark:bg-blue-950/30 dark:text-blue-100">
+        <AlertCircle className="h-4 w-4" />
+        <AlertDescription>
+          Before choosing a data source, set your LLM API configuration in{" "}
+          <a
+            href="/profile"
+            className="font-medium underline underline-offset-2"
+          >
+            Profile Settings
+          </a>
+          . This configuration is required for AI-powered analysis.
+        </AlertDescription>
+      </Alert>
 
       {/* Data Source Selection */}
       <div className="mb-6">

@@ -34,6 +34,14 @@ export default function Login() {
   const { login } = useAuth();
   const { fetchUserData } = useUser();
 
+  const showSuccessAndRedirect = (message: string) => {
+    setSuccessMessage(message);
+    setShowSuccessModal(true);
+    setTimeout(() => {
+      router.push("/");
+    }, 2000);
+  };
+
   const openForgotPasswordModal = (e: React.MouseEvent<HTMLAnchorElement>) => {
     e.preventDefault();
     setIsForgotPasswordOpen(true);
@@ -54,7 +62,7 @@ export default function Login() {
             "Content-Type": "application/json",
           },
           body: JSON.stringify({ email, password }),
-        }
+        },
       );
       const data = await response.json();
 
@@ -66,8 +74,7 @@ export default function Login() {
       if (data.success) {
         login(data.data.access_token);
         await fetchUserData();
-        setSuccessMessage("Logged in successfully!");
-        setShowSuccessModal(true);
+        showSuccessAndRedirect("Logged in successfully! Redirecting...");
       } else {
         setErrorMessage(data.detail || "Login failed.");
         setShowErrorModal(true);
@@ -90,15 +97,16 @@ export default function Login() {
             "Content-Type": "application/json",
           },
           body: JSON.stringify({ email, password }),
-        }
+        },
       );
       const data = await response.json();
 
       if (data.success) {
         login(data.data.access_token);
         await fetchUserData();
-        setSuccessMessage("Account restored successfully!");
-        setShowSuccessModal(true);
+        showSuccessAndRedirect(
+          "Account restored successfully! Redirecting...",
+        );
       } else {
         setErrorMessage(data.detail || "Failed to restore account.");
         setShowErrorModal(true);
@@ -116,7 +124,7 @@ export default function Login() {
   const handleGoogleLogin = async () => {
     try {
       const response = await fetch(
-        `${process.env.NEXT_PUBLIC_API_BASE_URL}/google/login`
+        `${process.env.NEXT_PUBLIC_API_BASE_URL}/google/login`,
       );
       const data = await response.json();
 
@@ -132,15 +140,10 @@ export default function Login() {
     }
   };
 
-  const handleSuccessClose = () => {
-    setShowSuccessModal(false);
-    router.push("/");
-  };
-
   return (
-    <div className="flex min-h-screen items-center justify-center px-4 py-12">
-      <Card className="w-full max-w-md p-8">
-        <div className="mb-8 text-center">
+    <div className="flex w-full items-center justify-center px-4">
+      <Card className="w-full max-w-md p-6 sm:p-8">
+        <div className="mb-5 text-center">
           <h2 className="text-3xl font-bold tracking-tight">
             Sign in to your account
           </h2>
@@ -149,7 +152,7 @@ export default function Login() {
           </p>
         </div>
 
-        <form onSubmit={handleSubmit} className="space-y-6">
+        <form onSubmit={handleSubmit} className="space-y-4">
           <div className="space-y-2">
             <Label htmlFor="email">Email address</Label>
             <Input
@@ -206,7 +209,7 @@ export default function Login() {
           </Button>
         </form>
 
-        <div className="relative my-6">
+        <div className="relative my-4">
           <div className="absolute inset-0 flex items-center">
             <div className="w-full border-t" />
           </div>
@@ -233,7 +236,7 @@ export default function Login() {
           Sign in with Google
         </Button>
 
-        <p className="mt-6 text-center text-sm text-muted-foreground">
+        <p className="mt-4 text-center text-sm text-muted-foreground">
           Don&apos;t have an account?{" "}
           <Link
             href="/register"
@@ -263,7 +266,6 @@ export default function Login() {
       />
       <SuccessModal
         show={showSuccessModal}
-        onClose={handleSuccessClose}
         message={successMessage}
       />
     </div>

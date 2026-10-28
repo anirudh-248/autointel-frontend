@@ -64,6 +64,10 @@ export default function ResetPassword() {
         setSuccessMessage("Password reset successfully. You can now log in.");
         setShowSuccessModal(true);
         localStorage.removeItem("reset_email");
+        setTimeout(() => {
+          setShowSuccessModal(false);
+          router.push("/login");
+        }, 2000);
       } else {
         setErrorMessage(data.detail || "Failed to reset password.");
         setShowErrorModal(true);
@@ -73,11 +77,6 @@ export default function ResetPassword() {
       setErrorMessage("Failed to reset password. Please try again later.");
       setShowErrorModal(true);
     }
-  };
-
-  const handleSuccessClose = () => {
-    setShowSuccessModal(false);
-    router.push("/login");
   };
 
   return (
@@ -199,7 +198,6 @@ export default function ResetPassword() {
       />
       <SuccessModal
         show={showSuccessModal}
-        onClose={handleSuccessClose}
         message={successMessage}
       />
     </div>

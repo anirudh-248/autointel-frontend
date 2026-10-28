@@ -47,13 +47,13 @@ export function PostgresHandler({
           headers: {
             Authorization: `Bearer ${token}`,
           },
-        }
+        },
       );
 
       if (!response.ok) {
         const errorData = await response.json();
         throw new Error(
-          errorData.detail || "Failed to save PostgreSQL connection"
+          errorData.detail || "Failed to save PostgreSQL connection",
         );
       }
 
@@ -120,20 +120,22 @@ export function SQLiteHandler({
     setLoading(true);
     try {
       const response = await fetch(
-        `${process.env.NEXT_PUBLIC_API_BASE_URL}/sqlite/connect`,
+        `${
+          process.env.NEXT_PUBLIC_API_BASE_URL
+        }/user?sqlite_db_url=${encodeURIComponent(connectionString)}`,
         {
-          method: "POST",
+          method: "PUT",
           headers: {
             "Content-Type": "application/json",
             Authorization: `Bearer ${token}`,
           },
           body: JSON.stringify({ connectionString }),
-        }
+        },
       );
 
       if (!response.ok) {
         const errorData = await response.json();
-        throw new Error(errorData.detail || "Failed to connect to SQLite");
+        throw new Error(errorData.detail || "Failed to save SQLite connection");
       }
 
       const data = await response.json();
@@ -190,7 +192,7 @@ export function SQLiteHandler({
             Authorization: `Bearer ${token}`,
           },
           body: formData,
-        }
+        },
       );
 
       if (!response.ok) {
@@ -208,7 +210,7 @@ export function SQLiteHandler({
       setSelectedFile(null);
       // Reset file input
       const fileInput = document.getElementById(
-        "sqlite-file-input"
+        "sqlite-file-input",
       ) as HTMLInputElement;
       if (fileInput) fileInput.value = "";
     } catch (err: any) {
@@ -326,20 +328,22 @@ export function MySQLHandler({
     try {
       // Seed the MySQL connection to the user account
       const response = await fetch(
-        `${process.env.NEXT_PUBLIC_API_BASE_URL}/mysql/connect`,
+        `${
+          process.env.NEXT_PUBLIC_API_BASE_URL
+        }/user?mysql_db_url=${encodeURIComponent(connectionString)}`,
         {
-          method: "POST",
+          method: "PUT",
           headers: {
             "Content-Type": "application/json",
             Authorization: `Bearer ${token}`,
           },
           body: JSON.stringify({ connectionString }),
-        }
+        },
       );
 
       if (!response.ok) {
         const errorData = await response.json();
-        throw new Error(errorData.detail || "Failed to connect to MySQL");
+        throw new Error(errorData.detail || "Failed to save MySQL connection");
       }
 
       const data = await response.json();
